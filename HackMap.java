@@ -10,8 +10,16 @@ public class HackMap {
 
 	private Map<String, Object> storage = new HashMap<String, Object>();
 
+	public boolean contains(String key) {
+		return storage.containsKey(key);
+	}
+
 	public void put(String key, Object value) {
 		storage.put(key, value);
+	}
+
+	public Object getObject(String key) {
+		return storage.get(key);
 	}
 
 	public int getInt(String key) {
@@ -128,17 +136,17 @@ public class HackMap {
 		return result;
 	}
 
-	public static HackMap checkVersionNumber(byte[] data) {
+	public static HackMap checkVersionNumber(byte[] input) {
 		HackMap result = new HackMap();
 
-		if (data.length >= 8) {
+		if (input.length >= 8) {
 			final String VERSION_NOT_FOUND = "not found";
 			String majorVersionJava = VERSION_NOT_FOUND;
 
-			int minorVersionNumber = byteArrayRangeToInt(data, 4, 2);
+			int minorVersionNumber = byteArrayRangeToInt(input, 4, 2);
 			//not sure what to do with it
 
-			int majorVersionNumber = byteArrayRangeToInt(data, 6, 2);
+			int majorVersionNumber = byteArrayRangeToInt(input, 6, 2);
 
 			switch(majorVersionNumber) {
 				case 0x35: majorVersionJava = "Java SE 9"; break;
@@ -166,6 +174,248 @@ public class HackMap {
 			result.put("Succeded", false);
 			result.put("ErrorText", "Not enough data to determine java compiler version");
 		}
+
+		return result;
+	}
+
+	public static HackMap parseConstants(byte[] input) {
+		HackMap result = new HackMap();
+
+		String message;
+		int numberOfConstants = -1;
+
+		if (input.length >= 10) {
+			numberOfConstants = byteArrayRangeToInt(input, 8, 2);
+
+			result.put("NumberOfConstants", numberOfConstants);
+
+			message = "Number of constants is " + numberOfConstants + "\n";
+
+
+			int index = 10;
+
+			String[] arrayOfConstants = new String[numberOfConstants+1];
+			int[] arrayOfInts = new int[numberOfConstants+1];
+
+			if (numberOfConstants > 0) {
+				// CONSTANT_Utf8				1
+				// CONSTANT_Integer				3
+				// CONSTANT_Float				4
+				// CONSTANT_Long				5
+				// CONSTANT_Double				6
+				// CONSTANT_Class				7
+				// CONSTANT_String				8
+				// CONSTANT_Fieldref			9
+				// CONSTANT_Methodref			10
+				// CONSTANT_InterfaceMethodref	11
+				// CONSTANT_NameAndType			12
+				// CONSTANT_MethodHandle 	    15
+				// CONSTANT_MethodType 	        16
+				// CONSTANT_InvokeDynamic 	    18
+
+				int i = 1;
+
+				while(i < numberOfConstants && input.length >= index+1) {
+					int constantTag = signBitAsValue(input[index]);
+					index++;
+
+					String type = "";
+
+					if (1 == constantTag) {
+						type = "Utf8";
+						// CONSTANT_Utf8_info {
+						// 	u1 tag;
+						// 	u2 length;
+						// 	u1 bytes[length];
+						// }
+
+						int length = byteArrayRangeToInt(input, index, 2);
+						index += 2;
+						message += length + "\n";
+
+						byte[] utf8Data = Arrays.copyOfRange(input, index, index+length);
+						message += new String(utf8Data) + "\n";
+
+						arrayOfConstants[i] = new String(utf8Data);
+
+						index += length;
+					}
+					else if (3 == constantTag) {
+						type = "Integer";
+						// CONSTANT_Integer_info {
+						// 	u1 tag;
+						// 	u4 bytes;
+						// }
+						message += byteArrayRangeToInt(input, index, 4) + "\n";
+						index += 4;
+					}
+					else if (4 == constantTag) {
+						type = "Float";
+						// CONSTANT_Float_info {
+						// 	u1 tag;
+						// 	u4 bytes;
+						// }
+
+						index += 4;
+					}
+					else if (5 == constantTag) {
+						type = "Long";
+						// CONSTANT_Long_info {
+						// 	u1 tag;
+						// 	u4 high_bytes;
+						// 	u4 low_bytes;
+						// }
+
+						index += 8;
+					}
+					else if (6 == constantTag) {
+						type = "Double";
+						// CONSTANT_Double_info {
+						// 	u1 tag;
+						// 	u4 high_bytes;
+						// 	u4 low_bytes;
+						// }
+
+						index += 8;
+					}
+					else if (7 == constantTag) {
+						type = "Class";
+						// CONSTANT_Class_info {
+						// 	u1 tag;
+						// 	u2 name_index;
+						// }
+						int nameIndex = byteArrayRangeToInt(input, index, 2);
+						arrayOfInts[i] = nameIndex;
+						message += nameIndex + "\n";
+
+						index += 2;
+					}
+					else if (8 == constantTag) {
+						type = "String";
+						// CONSTANT_String_info {
+						// 	u1 tag;
+						// 	u2 string_index;
+						// }
+
+						message += byteArrayRangeToInt(input, index, 2) + "\n";
+
+						index += 2;
+					}
+					else if (9 == constantTag) {
+						type = "Field Reference";
+						// CONSTANT_Fieldref_info {
+						// 	u1 tag;
+						// 	u2 class_index;
+						// 	u2 name_and_type_index;
+						// }
+
+						message += byteArrayRangeToInt(input, index, 2) + "\n";
+						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
+
+						index += 4;
+					}
+					else if (10 == constantTag) {
+						type = "Method Reference";
+						// CONSTANT_Methodref_info {
+						// 	u1 tag;
+						// 	u2 class_index;
+						// 	u2 name_and_type_index;
+						// }
+
+						message += byteArrayRangeToInt(input, index, 2) + "\n";
+						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
+
+						index+=4;
+					}
+					else if (11 == constantTag) {
+						type = "Interface Method Reference";
+						// CONSTANT_InterfaceMethodref_info {
+						// 	u1 tag;
+						// 	u2 class_index;
+						// 	u2 name_and_type_index;
+						// }
+
+						message += byteArrayRangeToInt(input, index, 2) + "\n";
+						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
+
+						index+=4;
+					}
+					else if (12 == constantTag) {
+						type = "Name and Type";
+						// CONSTANT_NameAndType_info {
+						// 	u1 tag;
+						// 	u2 name_index;
+						// 	u2 descriptor_index;
+						// }
+
+						message += byteArrayRangeToInt(input, index, 2) + "\n";
+						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
+
+						index+=4;
+					}
+					else if (15 == constantTag){
+						type = "Method Handle";
+						// CONSTANT_MethodHandle_info {
+						//     u1 tag;
+						//     u1 reference_kind;
+						//     u2 reference_index;
+						// }
+
+						index += 3;
+					}
+					else if (16 == constantTag){
+						type = "Method Type";
+						// CONSTANT_MethodType_info {
+						//     u1 tag;
+						//     u2 descriptor_index;
+						// }
+
+						index += 2;
+					}
+					else if (18 == constantTag) {
+						type = "Invoke Dynamic";
+						// CONSTANT_InvokeDynamic_info {
+						//     u1 tag;
+						//     u2 bootstrap_method_attr_index;
+						//     u2 name_and_type_index;
+						// }
+
+						index += 4;
+					}
+
+
+					if ("".equals(type)) {
+						result.put("Succeded", false);
+						result.put("ErrorText", "Failed to get tag for constant["+i+"]");
+						break;
+					}
+
+
+					message += "  Constant["+i+"] is " + type + "\n";
+
+
+					i++;
+				}
+
+				if (result.contains("Succeded") == false) {
+					//if error was not triggered during constant analysis
+					result.put("Succeded", true);
+					result.put("Message", message);
+					result.put("NextIndex", index);
+					result.put("ArrayOfConstants", arrayOfConstants);
+					result.put("ArrayOfInts", arrayOfInts);
+				}
+			}
+			else {
+				result.put("Succeded", false);
+				result.put("ErrorText", "Wrong number of constants");
+			}
+		}
+		else {
+			result.put("Succeded", false);
+			result.put("ErrorText", "Not enough data to get number of constants");
+		}
+
 
 		return result;
 	}
@@ -224,224 +474,14 @@ public class HackMap {
 			evaluateResult(versionNumberCheckResult, 3);
 
 
-			int numberOfConstants = -1;
+			HackMap constantParseResult = parseConstants(data);
 
-			if (data.length >= 10) {
-				numberOfConstants = byteArrayRangeToInt(data, 8, 2);
+			evaluateResult(constantParseResult, 4);
 
-				println("Number of constants: " + numberOfConstants + "\n");
-			}
-			else {
-				printlnError("Can not identify number of constants");
-				System.exit(1);
-			}
+			int index = constantParseResult.getInt("NextIndex");
+			String[] arrayOfConstants = (String[]) constantParseResult.getObject("ArrayOfConstants");
+			int[] arrayOfInts = (int[]) constantParseResult.getObject("ArrayOfInts");
 
-
-			int index = 10;
-
-			String[] arrayOfConstants = new String[numberOfConstants+1];
-			int[] arrayOfInts = new int[numberOfConstants+1];
-
-			if (numberOfConstants > 0) {
-				// CONSTANT_Utf8				1
-				// CONSTANT_Integer				3
-				// CONSTANT_Float				4
-				// CONSTANT_Long				5
-				// CONSTANT_Double				6
-				// CONSTANT_Class				7
-				// CONSTANT_String				8
-				// CONSTANT_Fieldref			9
-				// CONSTANT_Methodref			10
-				// CONSTANT_InterfaceMethodref	11
-				// CONSTANT_NameAndType			12
-				// CONSTANT_MethodHandle 	    15
-				// CONSTANT_MethodType 	        16
-				// CONSTANT_InvokeDynamic 	    18
-
-				int i = 1;
-
-				while(i < numberOfConstants && data.length >= index+1) {
-					int constantTag = signBitAsValue(data[index]);
-
-					String type = "";
-
-					if (1 == constantTag) {
-						type = "Utf8";
-						// CONSTANT_Utf8_info {
-						// 	u1 tag;
-						// 	u2 length;
-						// 	u1 bytes[length];
-						// }
-
-						int length = byteArrayRangeToInt(data, index+1, 2);
-						println(length);
-						byte[] utf8Data = Arrays.copyOfRange(data, index+3, index+3+length);
-						println(new String(utf8Data));
-
-						arrayOfConstants[i] = new String(utf8Data);
-
-						index += 3+length;
-					}
-					else if (3 == constantTag) {
-						type = "Integer";
-						// CONSTANT_Integer_info {
-						// 	u1 tag;
-						// 	u4 bytes;
-						// }
-						println(byteArrayRangeToInt(data, index+1, 4));
-						index += 5;
-					}
-					else if (4 == constantTag) {
-						type = "Float";
-						// CONSTANT_Float_info {
-						// 	u1 tag;
-						// 	u4 bytes;
-						// }
-
-						index += 5;
-					}
-					else if (5 == constantTag) {
-						type = "Long";
-						// CONSTANT_Long_info {
-						// 	u1 tag;
-						// 	u4 high_bytes;
-						// 	u4 low_bytes;
-						// }
-
-						index += 9;
-					}
-					else if (6 == constantTag) {
-						type = "Double";
-						// CONSTANT_Double_info {
-						// 	u1 tag;
-						// 	u4 high_bytes;
-						// 	u4 low_bytes;
-						// }
-
-						index += 9;
-					}
-					else if (7 == constantTag) {
-						type = "Class";
-						// CONSTANT_Class_info {
-						// 	u1 tag;
-						// 	u2 name_index;
-						// }
-						int nameIndex = byteArrayRangeToInt(data, index+1, 2);
-						arrayOfInts[i] = nameIndex;
-						println(nameIndex);
-
-						index += 3;
-					}
-					else if (8 == constantTag) {
-						type = "String";
-						// CONSTANT_String_info {
-						// 	u1 tag;
-						// 	u2 string_index;
-						// }
-
-						println(byteArrayRangeToInt(data, index+1, 2));
-
-						index += 3;
-					}
-					else if (9 == constantTag) {
-						type = "Field Reference";
-						// CONSTANT_Fieldref_info {
-						// 	u1 tag;
-						// 	u2 class_index;
-						// 	u2 name_and_type_index;
-						// }
-
-						println(byteArrayRangeToInt(data, index+1, 2));
-						println(byteArrayRangeToInt(data, index+3, 2));
-
-						index += 5;
-					}
-					else if (10 == constantTag) {
-						type = "Method Reference";
-						// CONSTANT_Methodref_info {
-						// 	u1 tag;
-						// 	u2 class_index;
-						// 	u2 name_and_type_index;
-						// }
-
-						println(byteArrayRangeToInt(data, index+1, 2));
-						println(byteArrayRangeToInt(data, index+3, 2));
-
-						index+=5;
-					}
-					else if (11 == constantTag) {
-						type = "Interface Method Reference";
-						// CONSTANT_InterfaceMethodref_info {
-						// 	u1 tag;
-						// 	u2 class_index;
-						// 	u2 name_and_type_index;
-						// }
-
-						println(byteArrayRangeToInt(data, index+1, 2));
-						println(byteArrayRangeToInt(data, index+3, 2));
-
-						index+=5;
-					}
-					else if (12 == constantTag) {
-						type = "Name and Type";
-						// CONSTANT_NameAndType_info {
-						// 	u1 tag;
-						// 	u2 name_index;
-						// 	u2 descriptor_index;
-						// }
-
-						println(byteArrayRangeToInt(data, index+1, 2));
-						println(byteArrayRangeToInt(data, index+3, 2));
-
-						index+=5;
-					}
-					else if (15 == constantTag){
-						type = "Method Handle";
-						// CONSTANT_MethodHandle_info {
-						//     u1 tag;
-						//     u1 reference_kind;
-						//     u2 reference_index;
-						// }
-
-						index += 4;
-					}
-					else if (16 == constantTag){
-						type = "Method Type";
-						// CONSTANT_MethodType_info {
-						//     u1 tag;
-						//     u2 descriptor_index;
-						// }
-
-						index += 3;
-					}
-					else if (18 == constantTag) {
-						type = "Invoke Dynamic";
-						// CONSTANT_InvokeDynamic_info {
-						//     u1 tag;
-						//     u2 bootstrap_method_attr_index;
-						//     u2 name_and_type_index;
-						// }
-
-						index += 5;
-					}
-
-
-					if ("".equals(type)) {
-						printlnError("Failed to get tag for constant["+i+"]");
-						System.exit(1);
-					}
-
-
-					println("  Constant["+i+"] is " + type + "\n");
-
-
-					i++;
-				}
-			}
-			else {
-				printlnError("Wrong number of constants");
-				System.exit(1);
-			}
 
 			if (data.length >= index+1) {
 				int value = byteArrayRangeToInt(data, index, 2);
