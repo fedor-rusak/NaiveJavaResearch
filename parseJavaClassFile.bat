@@ -1,4 +1,4 @@
 javac Test.java
 
-javac JavaClassFileParser.java
-java JavaClassFileParser Test.class
+javac HackMap.java
+java HackMap Test.class

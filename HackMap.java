@@ -3,7 +3,7 @@ import java.io.FileInputStream;
 
 import java.util.Arrays;
 
-public class JavaClassFileParser {
+public class HackMap {
 
 	private static byte[] readContentIntoByteArray(File file) {
 		FileInputStream fileInputStream = null;
@@ -42,16 +42,37 @@ public class JavaClassFileParser {
 	public static int byteArrayToInt(byte[] b) {
 		int result = 0;
 
-		for (int i = 0; i < 4; i++) {
-			// System.out.println(String.format("%02x", b[i]));
+		for (int i = 0; i < b.length; i++) {
+			// println(String.format("%02x", b[i]));
 			result = (result << 8) + (b[i] & 0xff);
 		}
 
 		return result;
 	}
 
+	public static int byteArrayRangeToInt(byte[] input, int from, int length) {
+		return byteArrayToInt(Arrays.copyOfRange(input, from, from+length));
+	}
+
 	public static int twoUnsignedBytesToInt(byte byte1, byte byte2) {
-		return signBitAsValue(byte1)*256 + signBitAsValue(byte2);
+		byte[] input = new byte[2];
+		input[0] = byte1;
+		input[1] = byte2;
+
+		return byteArrayToInt(input);
+	}
+
+
+	private static void println(String string) {
+		System.out.println(string);
+	}
+
+	private static void println(int value) {
+		println(String.valueOf(value));
+	}
+
+	private static void printlnError(String string) {
+		System.err.println(string);
 	}
 
 
@@ -61,38 +82,39 @@ public class JavaClassFileParser {
 	 */
 	public static void main(String[] args) {
 		if (args.length == 0)
-			System.out.println("Please specify class-file for analysis");
+			println("Please specify class-file for analysis");
 		else {
-			System.out.println("File \""+args[0] + "\" will be analyzed\n");
+			println("File \""+args[0] + "\" will be analyzed\n");
 
 			byte[] data = readContentIntoByteArray(new File(args[0]));
 
 			if (data.length > 0)
-				System.out.println("File length: " + data.length + " bytes\n");
+				println("File length: " + data.length + " bytes\n");
 			else {
-				System.out.println("Failure reading file or it is empty");
+				printlnError("Failure reading file or it is empty");
 				System.exit(1);
 			}
 
-			//http://web.cecs.pdx.edu/~apt/vmspec/ClassFile.doc.html
+
+			int firstFourBytesOfJavaClass = 0xCAFEBABE;
 
 			if (data.length >= 4
-				&& unsignedByteCompare(data[0], 0xCA)
-				&& unsignedByteCompare(data[1], 0xFE)
-				&& unsignedByteCompare(data[2], 0xBA)
-				&& unsignedByteCompare(data[3], 0xBE))
-				System.out.println("Magic part is correct\n");
+				&& byteArrayRangeToInt(data, 0, 4) == firstFourBytesOfJavaClass)
+				println("Magic is right\n");
 			else {
-				System.out.println("First bytes do not contain correct values");
+				printlnError("First bytes must contain \"magic\" values");
 				System.exit(1);
 			}
 
 
 			if (data.length >= 8) {
-				String failedToGetMajorVersion = "not identified";
-				String majorVersionJava = failedToGetMajorVersion;
+				final String VERSION_NOT_FOUND = "not found";
+				String majorVersionJava = VERSION_NOT_FOUND;
 
-				int majorVersionNumber = signBitAsValue(data[7]);
+				int minorVersionNumber = byteArrayRangeToInt(data, 4, 2);
+				//not sure what to do with it
+
+				int majorVersionNumber = byteArrayRangeToInt(data, 6, 2);
 
 				switch(majorVersionNumber) {
 					case 0x35: majorVersionJava = "Java SE 9"; break;
@@ -106,27 +128,27 @@ public class JavaClassFileParser {
 					case 0x2D: majorVersionJava = "JDK 1.1"; break;
 				}
 
-				if (majorVersionJava.equals(failedToGetMajorVersion)) {
-					System.out.println("Can not identify version of java compiler");
+				if (majorVersionJava.equals(VERSION_NOT_FOUND)) {
+					printlnError("Can not identify version of java compiler");
 					System.exit(1);
 				}
 
-				System.out.println("Major version: " + majorVersionJava + "\n");
+				println("Major version: " + majorVersionJava + "\n");
 			}
 			else {
-				System.out.println("Can not identify version of java compiler");
+				printlnError("Can not identify version of java compiler");
 				System.exit(1);
 			}
 
 			int numberOfConstants = -1;
 
 			if (data.length >= 10) {
-				numberOfConstants = twoUnsignedBytesToInt(data[8], data[9]);
+				numberOfConstants = byteArrayRangeToInt(data, 8, 2);
 
-				System.out.println("Number of constants: " + numberOfConstants + "\n");
+				println("Number of constants: " + numberOfConstants + "\n");
 			}
 			else {
-				System.out.println("Can not identify number of constants");
+				printlnError("Can not identify number of constants");
 				System.exit(1);
 			}
 
@@ -167,10 +189,10 @@ public class JavaClassFileParser {
 						// 	u1 bytes[length];
 						// }
 
-						int length = twoUnsignedBytesToInt(data[index+1], data[index+2]);
-						System.out.println(length);
+						int length = byteArrayRangeToInt(data, index+1, 2);
+						println(length);
 						byte[] utf8Data = Arrays.copyOfRange(data, index+3, index+3+length);
-						System.out.println(new String(utf8Data));
+						println(new String(utf8Data));
 
 						arrayOfConstants[i] = new String(utf8Data);
 
@@ -182,7 +204,7 @@ public class JavaClassFileParser {
 						// 	u1 tag;
 						// 	u4 bytes;
 						// }
-						System.out.println(byteArrayToInt(Arrays.copyOfRange(data, index+1, index+1+4)));
+						println(byteArrayRangeToInt(data, index+1, 4));
 						index += 5;
 					}
 					else if (4 == constantTag) {
@@ -220,9 +242,9 @@ public class JavaClassFileParser {
 						// 	u1 tag;
 						// 	u2 name_index;
 						// }
-						int nameIndex = twoUnsignedBytesToInt(data[index+1], data[index+2]);
+						int nameIndex = byteArrayRangeToInt(data, index+1, 2);
 						arrayOfInts[i] = nameIndex;
-						System.out.println(nameIndex);
+						println(nameIndex);
 
 						index += 3;
 					}
@@ -233,7 +255,7 @@ public class JavaClassFileParser {
 						// 	u2 string_index;
 						// }
 
-						System.out.println(twoUnsignedBytesToInt(data[index+1], data[index+2]));
+						println(byteArrayRangeToInt(data, index+1, 2));
 
 						index += 3;
 					}
@@ -245,8 +267,8 @@ public class JavaClassFileParser {
 						// 	u2 name_and_type_index;
 						// }
 
-						System.out.println(twoUnsignedBytesToInt(data[index+1], data[index+2]));
-						System.out.println(signBitAsValue(data[index+3])*256+signBitAsValue(data[index+4]));
+						println(byteArrayRangeToInt(data, index+1, 2));
+						println(byteArrayRangeToInt(data, index+3, 2));
 
 						index += 5;
 					}
@@ -258,8 +280,8 @@ public class JavaClassFileParser {
 						// 	u2 name_and_type_index;
 						// }
 
-						System.out.println(twoUnsignedBytesToInt(data[index+1], data[index+2]));
-						System.out.println(signBitAsValue(data[index+3])*256+signBitAsValue(data[index+4]));
+						println(byteArrayRangeToInt(data, index+1, 2));
+						println(byteArrayRangeToInt(data, index+3, 2));
 
 						index+=5;
 					}
@@ -271,8 +293,8 @@ public class JavaClassFileParser {
 						// 	u2 name_and_type_index;
 						// }
 
-						System.out.println(twoUnsignedBytesToInt(data[index+1], data[index+2]));
-						System.out.println(signBitAsValue(data[index+3])*256+signBitAsValue(data[index+4]));
+						println(byteArrayRangeToInt(data, index+1, 2));
+						println(byteArrayRangeToInt(data, index+3, 2));
 
 						index+=5;
 					}
@@ -284,8 +306,8 @@ public class JavaClassFileParser {
 						// 	u2 descriptor_index;
 						// }
 
-						System.out.println(twoUnsignedBytesToInt(data[index+1], data[index+2]));
-						System.out.println(signBitAsValue(data[index+3])*256+signBitAsValue(data[index+4]));
+						println(byteArrayRangeToInt(data, index+1, 2));
+						println(byteArrayRangeToInt(data, index+3, 2));
 
 						index+=5;
 					}
@@ -321,25 +343,25 @@ public class JavaClassFileParser {
 
 
 					if ("".equals(type)) {
-						System.out.println("Failed to get tag for constant["+i+"]");
+						printlnError("Failed to get tag for constant["+i+"]");
 						System.exit(1);
 					}
 
 
-					System.out.println("  Constant["+i+"] is " + type + "\n");
+					println("  Constant["+i+"] is " + type + "\n");
 
 
 					i++;
 				}
 			}
 			else {
-				System.out.println("Wrong number of constants");
+				printlnError("Wrong number of constants");
 				System.exit(1);
 			}
 
 			if (data.length >= index+1) {
-				int value = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-				System.out.println("Access flags bitmask: " + String.format("%02x", data[index]) + String.format("%02x", data[index+1]) + "\n");
+				int value = byteArrayRangeToInt(data, index, 2);
+				println("Access flags bitmask: " + String.format("%02x", data[index]) + String.format("%02x", data[index+1]) + "\n");
 				// ACC_PUBLIC 	0x0001 	Declared public; may be accessed from outside its package.
 				// ACC_FINAL 	0x0010 	Declared final; no subclasses allowed.
 				// ACC_SUPER 	0x0020 	Treat superclass methods specially when invoked by the invokespecial instruction.
@@ -352,50 +374,50 @@ public class JavaClassFileParser {
 				index +=2;
 			}
 			else {
-				System.out.println("No data for access flags!");
+				printlnError("No data for access flags!");
 				System.exit(1);
 			}
 
 
 			if (data.length >= index+1) {
-				int value = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-				System.out.println("This class index: " + value + "\n");
+				int value = byteArrayRangeToInt(data, index, 2);
+				println("This class index: " + value + "\n");
 
 				index +=2;
 			}
 			else {
-				System.out.println("No this class index!");
+				printlnError("No this class index!");
 				System.exit(1);
 			}
 
 			if (data.length >= index+1) {
-				int value = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-				System.out.println("Super class index: " + value + "\n");
+				int value = byteArrayRangeToInt(data, index, 2);
+				println("Super class index: " + value + "\n");
 
 				index +=2;
 			}
 			else {
-				System.out.println("No super class index!");
+				printlnError("No super class index!");
 				System.exit(1);
 			}
 
 			int numberOfInterfaces = 0;
 			if (data.length >= index+1) {
-				numberOfInterfaces = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-				System.out.println("Number of interfaces: " + numberOfInterfaces + "\n");
+				numberOfInterfaces = byteArrayRangeToInt(data, index, 2);
+				println("Number of interfaces: " + numberOfInterfaces + "\n");
 
 				index +=2;
 			}
 			else {
-				System.out.println("No number of interfaces!");
+				printlnError("No number of interfaces!");
 				System.exit(1);
 			}
 
 
 			for (int i = 0; i < numberOfInterfaces; i++) {
-				int interfaceIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int interfaceIndex = byteArrayRangeToInt(data, index, 2);
 
-				System.out.println("  interface[" + (i+1) + "] is " + interfaceIndex + "\n");
+				println("  interface[" + (i+1) + "] is " + interfaceIndex + "\n");
 
 				index += 2;
 			}
@@ -404,13 +426,13 @@ public class JavaClassFileParser {
 			int numberOfFields = 0;
 
 			if (data.length >= index+1) {
-				numberOfFields = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-				System.out.println("Number of fields: " + numberOfFields + "\n");
+				numberOfFields = byteArrayRangeToInt(data, index, 2);
+				println("Number of fields: " + numberOfFields + "\n");
 
 				index +=2;
 			}
 			else {
-				System.out.println("No number of fields");
+				printlnError("No number of fields");
 				System.exit(1);
 			}
 
@@ -424,7 +446,7 @@ public class JavaClassFileParser {
 				// 	attribute_info attributes[attributes_count];
 				// }
 
-				System.out.println("  access flags bitmask: " + String.format("%02x", data[index]) + String.format("%02x", data[index+1]) + "\n");
+				println("  access flags bitmask: " + String.format("%02x", data[index]) + String.format("%02x", data[index+1]) + "\n");
 				index +=2;
 				// ACC_PUBLIC 	0x0001 	Declared public; may be accessed from outside its package.
 				// ACC_PRIVATE 	0x0002 	Declared private; usable only within the defining class.
@@ -437,25 +459,25 @@ public class JavaClassFileParser {
 				// ACC_ENUM 	0x4000 	Declared as an element of an enum. 
 
 
-				int nameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int nameIndex = byteArrayRangeToInt(data, index, 2);
 				index +=2;
-				System.out.println("  name index: " + nameIndex + "");
-				System.out.println("  name value: " + arrayOfConstants[nameIndex] + "\n");
+				println("  name index: " + nameIndex + "");
+				println("  name value: " + arrayOfConstants[nameIndex] + "\n");
 
-				int descriptorIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int descriptorIndex = byteArrayRangeToInt(data, index, 2);
 				index +=2;
-				System.out.println("  descriptor index: " + descriptorIndex + "\n");
+				println("  descriptor index: " + descriptorIndex + "\n");
 
-				int numberOfAttributes = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int numberOfAttributes = byteArrayRangeToInt(data, index, 2);
 				index +=2;
-				System.out.println("  number of attributes: " + numberOfAttributes + "\n");
+				println("  number of attributes: " + numberOfAttributes + "\n");
 
 				for (int j = 0; j < numberOfAttributes; j++) {
-					int attributeNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+					int attributeNameIndex = byteArrayRangeToInt(data, index, 2);
 					index += 2;
-					System.out.println("    attribute name index: " + attributeNameIndex + "");
+					println("    attribute name index: " + attributeNameIndex + "");
 					String attributeName = arrayOfConstants[attributeNameIndex];
-					System.out.println("    attribute name value: " + attributeName + "\n");
+					println("    attribute name value: " + attributeName + "\n");
 
 					if ("ConstantValue".equals(attributeName)) {
 						// ConstantValue_attribute {
@@ -466,12 +488,12 @@ public class JavaClassFileParser {
 
 						//attribute_length    The value of the attribute_length item of a ConstantValue_attribute structure must be 2.
 						//it should be unsigned int to be precise
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index+=4;
 
-						int constantValueIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int constantValueIndex = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    constant value index: " + constantValueIndex + "\n");
+						println("    constant value index: " + constantValueIndex + "\n");
 					}
 					else if ("Synthetic".equals(attributeName)) {
 						// Synthetic_attribute {
@@ -481,7 +503,7 @@ public class JavaClassFileParser {
 
 						//attribute_length    The value of the attribute_length item is zero.
 						//it should be unsigned int to be precise
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 					}
 					else if ("Signature".equals(attributeName)) {
@@ -491,12 +513,12 @@ public class JavaClassFileParser {
 						//     u2 signature_index;
 						// }
 
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 
-						int signatureIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int signatureIndex = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    signature index: " + signatureIndex + "\n");
+						println("    signature index: " + signatureIndex + "\n");
 					}
 					else if ("Deprecated".equals(attributeName)) {
 						// Synthetic_attribute {
@@ -506,7 +528,7 @@ public class JavaClassFileParser {
 
 						//attribute_length    The value of the attribute_length item is zero.
 						//it should be unsigned int to be precise
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 					}
 					else if ("RuntimeVisibleAnnotations".equals(attributeName) || "RuntimeInvisibleAnnotations".equals(attributeName)) {
@@ -524,12 +546,12 @@ public class JavaClassFileParser {
 						//     annotation annotations[num_annotations];
 						// }
 
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 
-						int numberOfAnnotations = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int numberOfAnnotations = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    number of annotations: " + numberOfAnnotations + "\n");
+						println("    number of annotations: " + numberOfAnnotations + "\n");
 
 						for (int k = 0; k < numberOfAnnotations; k++) {
 							// annotation {
@@ -540,15 +562,15 @@ public class JavaClassFileParser {
 							//     } element_value_pairs[num_element_value_pairs];
 							// }
 
-							int typeIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+							int typeIndex = byteArrayRangeToInt(data, index, 2);
 							index += 2;
-							System.out.println("      type index: " + typeIndex + "");
+							println("      type index: " + typeIndex + "");
 							String typeName = arrayOfConstants[typeIndex];
-							System.out.println("      type name: " + typeName + "\n");
+							println("      type name: " + typeName + "\n");
 
-							int numberOfValuePairs = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+							int numberOfValuePairs = byteArrayRangeToInt(data, index, 2);
 							index += 2;
-							System.out.println("      number of value pairs: " + numberOfValuePairs + "\n");
+							println("      number of value pairs: " + numberOfValuePairs + "\n");
 
 							//WORK IN PROGRESS
 							for (int l = 0; l < numberOfValuePairs; l++) {
@@ -570,9 +592,9 @@ public class JavaClassFileParser {
 								//         } array_value;
 								//     } value;
 								// }
-								int elementNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int elementNameIndex = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("        element name index: " + elementNameIndex + "\n");
+								println("        element name index: " + elementNameIndex + "\n");
 								char elementTag = (char) signBitAsValue(data[index]);
 								index++;
 								//The const_value_index item is used if the tag item is one of B, C, D, F, I, J, S, Z, or s. 
@@ -586,38 +608,38 @@ public class JavaClassFileParser {
 								}
 
 								if (useConst) {
-									int unionConstNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-									System.out.println("        union constant index: " + unionConstNameIndex);
-									System.out.println("        union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
+									int unionConstNameIndex = byteArrayRangeToInt(data, index, 2);
+									println("        union constant index: " + unionConstNameIndex);
+									println("        union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
 									index+=2;
 								}
 								else {
 									//WORK IN PROGRESS
-									System.out.println("WAAAT " + elementTag);
+									printlnError("WAAAT " + elementTag);
 									System.exit(1);
 								}
 							}
 						}
 					}
 
-					System.out.println("    attribute[" + (j+1) + "]\n");
+					println("    attribute[" + (j+1) + "]\n");
 				}
 
 
-				System.out.println("  field[" + (i+1) + "]\n");
+				println("  field[" + (i+1) + "]\n");
 			}
 
 
 			int numberOfMethods = 0;
 
 			if (data.length >= index+1) {
-				numberOfMethods = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-				System.out.println("Number of methods: " + numberOfMethods + "\n");
+				numberOfMethods = byteArrayRangeToInt(data, index, 2);
+				println("Number of methods: " + numberOfMethods + "\n");
 
 				index +=2;
 			}
 			else {
-				System.out.println("No number of methods");
+				printlnError("No number of methods");
 				System.exit(1);
 			}
 
@@ -630,7 +652,7 @@ public class JavaClassFileParser {
 				//     attribute_info attributes[attributes_count];
 				// }
 
-				System.out.println("  access flags bitmask: " + String.format("%02x", data[index]) + String.format("%02x", data[index+1]) + "\n");
+				println("  access flags bitmask: " + String.format("%02x", data[index]) + String.format("%02x", data[index+1]) + "\n");
 				index +=2;
 				// ACC_PUBLIC 	0x0001 	Declared public; may be accessed from outside its package.
 				// ACC_PRIVATE 	0x0002 	Declared private; accessible only within the defining class.
@@ -646,25 +668,25 @@ public class JavaClassFileParser {
 				// ACC_SYNTHETIC 	0x1000 	Declared synthetic; not present in the source code. 
 
 
-				int nameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int nameIndex = byteArrayRangeToInt(data, index, 2);
 				index +=2;
-				System.out.println("  name index: " + nameIndex + "");
-				System.out.println("  name value: " + arrayOfConstants[nameIndex] + "\n");
+				println("  name index: " + nameIndex + "");
+				println("  name value: " + arrayOfConstants[nameIndex] + "\n");
 
-				int descriptorIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int descriptorIndex = byteArrayRangeToInt(data, index, 2);
 				index +=2;
-				System.out.println("  descriptor index: " + descriptorIndex + "\n");
+				println("  descriptor index: " + descriptorIndex + "\n");
 
-				int numberOfAttributes = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int numberOfAttributes = byteArrayRangeToInt(data, index, 2);
 				index +=2;
-				System.out.println("  number of attributes: " + numberOfAttributes + "\n");
+				println("  number of attributes: " + numberOfAttributes + "\n");
 
 				for (int j = 0; j < numberOfAttributes; j++) {
-					int attributeNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+					int attributeNameIndex = byteArrayRangeToInt(data, index, 2);
 					index += 2;
-					System.out.println("    attribute name index: " + attributeNameIndex + "");
+					println("    attribute name index: " + attributeNameIndex + "");
 					String attributeName = arrayOfConstants[attributeNameIndex];
-					System.out.println("    attribute name value: " + attributeName + "\n");
+					println("    attribute name value: " + attributeName + "\n");
 
 					if ("Code".equals(attributeName)) {
 						// Code_attribute {
@@ -686,27 +708,27 @@ public class JavaClassFileParser {
 
 						//attribute_length    The value of the attribute_length item of a ConstantValue_attribute structure must be 2.
 						//it should be unsigned int to be precise
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index+=4;
 
-						int maxStack = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int maxStack = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    max stack: " + maxStack + "\n");
+						println("    max stack: " + maxStack + "\n");
 
-						int maxLocals = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int maxLocals = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    max locals: " + maxLocals + "\n");
+						println("    max locals: " + maxLocals + "\n");
 
-						int lengthOfCode = byteArrayToInt(Arrays.copyOfRange(data, index, index+4));
-						System.out.println("    code length: " + lengthOfCode + "\n");
+						int lengthOfCode = byteArrayRangeToInt(data, index, 4);
+						println("    code length: " + lengthOfCode + "\n");
 						index += 4;
 
-						System.out.println("    No idea how to show bytecode now\n");
+						println("    No idea how to show bytecode now\n");
 						index += lengthOfCode;
 
-						int lengthOfExceptionTable = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int lengthOfExceptionTable = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    length of exception table: " + lengthOfExceptionTable + "\n");
+						println("    length of exception table: " + lengthOfExceptionTable + "\n");
 
 						for (int k = 0; k < lengthOfExceptionTable; k++) {
 							// {   u2 start_pc;
@@ -714,20 +736,20 @@ public class JavaClassFileParser {
 							//     u2 handler_pc;
 							//     u2 catch_type;
 							// }
-							System.out.println("      8 boring bytes about exception handlers\n");
+							println("      8 boring bytes about exception handlers\n");
 							index += 8;
 						}
 
-						int numberOfCodeAttributes = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int numberOfCodeAttributes = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    number of attributes: " + numberOfCodeAttributes + "\n");
+						println("    number of attributes: " + numberOfCodeAttributes + "\n");
 
 						for (int k = 0; k < numberOfCodeAttributes; k++) {
-							int codeAttributeNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+							int codeAttributeNameIndex = byteArrayRangeToInt(data, index, 2);
 							index += 2;
-							System.out.println("      attribute name index: " + codeAttributeNameIndex + "");
+							println("      attribute name index: " + codeAttributeNameIndex + "");
 							String codeAttributeName = arrayOfConstants[codeAttributeNameIndex];
-							System.out.println("      attribute name value: " + codeAttributeName + "\n");
+							println("      attribute name value: " + codeAttributeName + "\n");
 
 							if ("LineNumberTable".equals(codeAttributeName)) {
 								// LineNumberTable_attribute {
@@ -739,14 +761,14 @@ public class JavaClassFileParser {
 								//     } line_number_table[line_number_table_length];
 								// }
 
-								System.out.println("      attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+								println("      attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 								index += 4;
 
-								int lengthOfLineNumberTable = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int lengthOfLineNumberTable = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("      length of line number table: " + lengthOfLineNumberTable + "\n");
+								println("      length of line number table: " + lengthOfLineNumberTable + "\n");
 
-								System.out.println("      no idea how to show line number table\n");
+								println("      no idea how to show line number table\n");
 								index += lengthOfLineNumberTable*4;
 							}
 							else if ("LocalVariableTable".equals(codeAttributeName)) {
@@ -762,14 +784,14 @@ public class JavaClassFileParser {
 								//     } local_variable_table[local_variable_table_length];
 								// }
 
-								System.out.println("      attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+								println("      attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 								index += 4;
 
-								int lengthOfLocalVariableTable = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int lengthOfLocalVariableTable = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("      length of local variable table: " + lengthOfLocalVariableTable + "\n");
+								println("      length of local variable table: " + lengthOfLocalVariableTable + "\n");
 
-								System.out.println("      no idea how to show local variable table\n");
+								println("      no idea how to show local variable table\n");
 								index += lengthOfLocalVariableTable*10;
 							}
 							else if ("LocalVariableTypeTable".equals(codeAttributeName)) {
@@ -785,14 +807,14 @@ public class JavaClassFileParser {
 								//     } local_variable_type_table[local_variable_type_table_length];
 								// }
 
-								System.out.println("      attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+								println("      attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 								index += 4;
 
-								int lengthOfLocalVariableTypeTable = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int lengthOfLocalVariableTypeTable = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("      length of local variable type table: " + lengthOfLocalVariableTypeTable + "\n");
+								println("      length of local variable type table: " + lengthOfLocalVariableTypeTable + "\n");
 
-								System.out.println("      no idea how to show local variable type table\n");
+								println("      no idea how to show local variable type table\n");
 								index += lengthOfLocalVariableTypeTable*10;
 							}
 							else if ("StackMapTable".equals(codeAttributeName)) {
@@ -803,17 +825,17 @@ public class JavaClassFileParser {
 								//     stack_map_frame entries[number_of_entries];
 								// }
 
-								System.out.println("      attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+								println("      attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 								index += 4;
 
-								int numberOfEntries = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int numberOfEntries = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("      number of entries: " + numberOfEntries + "\n");
+								println("      number of entries: " + numberOfEntries + "\n");
 
 								for (int l = 0; l < numberOfEntries; l++) {
 									int frameTag = signBitAsValue(data[index]);
 									index++;
-									System.out.println("        frame tag: " + frameTag + "\n");
+									println("        frame tag: " + frameTag + "\n");
 
 									if (frameTag <= 63) {
 										// same_frame {
@@ -828,7 +850,7 @@ public class JavaClassFileParser {
 
 										int verificationTypeInfoTag = signBitAsValue(data[index]);
 										index++;
-										System.out.println("          verification type info tag: " + verificationTypeInfoTag + "\n");
+										println("          verification type info tag: " + verificationTypeInfoTag + "\n");
 
 										if (verificationTypeInfoTag == 7 || verificationTypeInfoTag == 8) {
 											// Object_variable_info {
@@ -851,13 +873,13 @@ public class JavaClassFileParser {
 										//     verification_type_info stack[1];
 										// }
 
-										int offsetDelta = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int offsetDelta = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("        offset delta: " + offsetDelta + "\n");
+										println("        offset delta: " + offsetDelta + "\n");
 
 										int verificationTypeInfoTag = signBitAsValue(data[index]);
 										index++;
-										System.out.println("          verification type info tag: " + verificationTypeInfoTag + "\n");
+										println("          verification type info tag: " + verificationTypeInfoTag + "\n");
 
 										if (verificationTypeInfoTag == 7 || verificationTypeInfoTag == 8) {
 											// Object_variable_info {
@@ -879,9 +901,9 @@ public class JavaClassFileParser {
 										//     u2 offset_delta;
 										// }
 
-										int offsetDelta = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int offsetDelta = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("        offset delta: " + offsetDelta + "\n");
+										println("        offset delta: " + offsetDelta + "\n");
 									}
 									else if (frameTag == 251) {
 										// same_frame_extended {
@@ -889,9 +911,9 @@ public class JavaClassFileParser {
 										//     u2 offset_delta;
 										// }
 
-										int offsetDelta = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int offsetDelta = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("        offset delta: " + offsetDelta + "\n");
+										println("        offset delta: " + offsetDelta + "\n");
 									}
 									else if (frameTag > 251 && frameTag <= 254) {
 										// append_frame {
@@ -900,14 +922,14 @@ public class JavaClassFileParser {
 										//     verification_type_info locals[frame_type - 251];
 										// }
 
-										int offsetDelta = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int offsetDelta = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("        offset delta: " + offsetDelta + "\n");
+										println("        offset delta: " + offsetDelta + "\n");
 
 										for (int m = 0; m < frameTag - 251; m++) {
 											int verificationTypeInfoTag = signBitAsValue(data[index]);
 											index++;
-											System.out.println("          verification type info tag: " + verificationTypeInfoTag + "\n");
+											println("          verification type info tag: " + verificationTypeInfoTag + "\n");
 
 											if (verificationTypeInfoTag == 7 || verificationTypeInfoTag == 8) {
 												// Object_variable_info {
@@ -923,7 +945,7 @@ public class JavaClassFileParser {
 												index +=2;
 											}
 
-											System.out.println("          verification type info tag with index " + (m+1) + "\n");
+											println("          verification type info tag with index " + (m+1) + "\n");
 										}
 									}
 									else if (frameTag == 255) {
@@ -936,24 +958,24 @@ public class JavaClassFileParser {
 										//     verification_type_info stack[number_of_stack_items];
 										// }
 
-										int offsetDelta = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int offsetDelta = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("        offset delta: " + offsetDelta + "\n");
+										println("        offset delta: " + offsetDelta + "\n");
 
-										int numberOfLocals = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int numberOfLocals = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("        number of locals: " + numberOfLocals + "\n");
+										println("        number of locals: " + numberOfLocals + "\n");
 
-										int numberOfStackFrames = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int numberOfStackFrames = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("        number of stack frames: " + numberOfStackFrames + "\n");
+										println("        number of stack frames: " + numberOfStackFrames + "\n");
 									}
 
-									System.out.println("        frame[" + (l+1) + "]\n");
+									println("        frame[" + (l+1) + "]\n");
 								}
 							}
 
-							System.out.println("      attribute[" + (k+1) + "]\n");
+							println("      attribute[" + (k+1) + "]\n");
 						}
 					}
 					else if ("Exceptions".equals(attributeName)) {
@@ -964,20 +986,20 @@ public class JavaClassFileParser {
 						//     u2 exception_index_table[number_of_exceptions];
 						// }
 
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 
-						int numberOfExceptions = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int numberOfExceptions = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    number of exceptions: " + numberOfExceptions + "\n");
+						println("    number of exceptions: " + numberOfExceptions + "\n");
 
 
 						for (int k = 0; k < numberOfExceptions; k++) {
-							int exceptionIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+							int exceptionIndex = byteArrayRangeToInt(data, index, 2);
 							index += 2;
-							System.out.println("      exception class index: " + exceptionIndex + "");
+							println("      exception class index: " + exceptionIndex + "");
 							String exceptionClass = arrayOfConstants[arrayOfInts[exceptionIndex]];
-							System.out.println("      exception class value: " + exceptionClass + "\n");
+							println("      exception class value: " + exceptionClass + "\n");
 						}
 					}
 					else if ("Synthetic".equals(attributeName)) {
@@ -986,7 +1008,7 @@ public class JavaClassFileParser {
 						//     u4 attribute_length;
 						// }
 
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 					}
 					else if ("Signature".equals(attributeName)) {
@@ -996,12 +1018,12 @@ public class JavaClassFileParser {
 						//     u2 signature_index;
 						// }
 
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 
-						int signatureIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int signatureIndex = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    signature index: " + signatureIndex + "\n");
+						println("    signature index: " + signatureIndex + "\n");
 					}
 					else if ("Deprecated".equals(attributeName)) {
 						// Synthetic_attribute {
@@ -1011,7 +1033,7 @@ public class JavaClassFileParser {
 
 						//attribute_length    The value of the attribute_length item is zero.
 						//it should be unsigned int to be precise
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 					}
 					else if ("RuntimeVisibleAnnotations".equals(attributeName) || "RuntimeInvisibleAnnotations".equals(attributeName)) {
@@ -1029,12 +1051,12 @@ public class JavaClassFileParser {
 						//     annotation annotations[num_annotations];
 						// }
 
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 
-						int numberOfAnnotations = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int numberOfAnnotations = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    number of annotations: " + numberOfAnnotations + "\n");
+						println("    number of annotations: " + numberOfAnnotations + "\n");
 
 						for (int k = 0; k < numberOfAnnotations; k++) {
 							// annotation {
@@ -1045,15 +1067,15 @@ public class JavaClassFileParser {
 							//     } element_value_pairs[num_element_value_pairs];
 							// }
 
-							int typeIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+							int typeIndex = byteArrayRangeToInt(data, index, 2);
 							index += 2;
-							System.out.println("      type index: " + typeIndex + "");
+							println("      type index: " + typeIndex + "");
 							String typeName = arrayOfConstants[typeIndex];
-							System.out.println("      type name: " + typeName + "\n");
+							println("      type name: " + typeName + "\n");
 
-							int numberOfValuePairs = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+							int numberOfValuePairs = byteArrayRangeToInt(data, index, 2);
 							index += 2;
-							System.out.println("      number of value pairs: " + numberOfValuePairs + "\n");
+							println("      number of value pairs: " + numberOfValuePairs + "\n");
 
 							//WORK IN PROGRESS
 							for (int l = 0; l < numberOfValuePairs; l++) {
@@ -1075,13 +1097,13 @@ public class JavaClassFileParser {
 								//         } array_value;
 								//     } value;
 								// }
-								int elementNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int elementNameIndex = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("        element name index: " + elementNameIndex);
-								System.out.println("        element name value: " + arrayOfConstants[elementNameIndex] + "\n");
+								println("        element name index: " + elementNameIndex);
+								println("        element name value: " + arrayOfConstants[elementNameIndex] + "\n");
 								char elementTag = (char) signBitAsValue(data[index]);
 								index++;
-								System.out.println("        element tag: " + elementTag + "\n");
+								println("        element tag: " + elementTag + "\n");
 								//The const_value_index item is used if the tag item is one of B, C, D, F, I, J, S, Z, or s. 
 								String tagString = "BCDFIJSZs";
 								boolean useConst = false;
@@ -1093,20 +1115,20 @@ public class JavaClassFileParser {
 								}
 
 								if (useConst) {
-									int unionConstNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-									System.out.println("        union constant index: " + unionConstNameIndex);
-									System.out.println("        union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
+									int unionConstNameIndex = byteArrayRangeToInt(data, index, 2);
+									println("        union constant index: " + unionConstNameIndex);
+									println("        union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
 									index+=2;
 								}
 								else if ('[' == elementTag) {
-									int numberOfArrayValues = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+									int numberOfArrayValues = byteArrayRangeToInt(data, index, 2);
 									index += 2;
-									System.out.println("        number of array values: " + numberOfArrayValues + "\n");
+									println("        number of array values: " + numberOfArrayValues + "\n");
 
 									for (int m = 0; m < numberOfArrayValues; m++) {
 										char arrayElementTag = (char) signBitAsValue(data[index]);
 										index++;
-										System.out.println("          array element tag: " + arrayElementTag + "\n");
+										println("          array element tag: " + arrayElementTag + "\n");
 
 
 										boolean arrayUseConst = false;
@@ -1119,51 +1141,51 @@ public class JavaClassFileParser {
 										}
 
 										if (arrayUseConst) {
-											int unionConstNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-											System.out.println("          union constant index: " + unionConstNameIndex);
-											System.out.println("          union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
+											int unionConstNameIndex = byteArrayRangeToInt(data, index, 2);
+											println("          union constant index: " + unionConstNameIndex);
+											println("          union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
 											index+=2;
 										}
 										else if ('c' == arrayElementTag) {
-											int classInfoIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+											int classInfoIndex = byteArrayRangeToInt(data, index, 2);
 											index += 2;
-											System.out.println("          class info index: " + classInfoIndex + "\n");
-											System.out.println("          class info value: " + arrayOfConstants[classInfoIndex] + "\n");
+											println("          class info index: " + classInfoIndex + "\n");
+											println("          class info value: " + arrayOfConstants[classInfoIndex] + "\n");
 										}
 										else {
-											System.out.println("WAAAT " + elementTag);
+											printlnError("WAAAT " + elementTag);
 											System.exit(1);
 										}
 
-										System.out.println("          array element index is " + (m+1) + "\n");
+										println("          array element index is " + (m+1) + "\n");
 									}
 								}
 								else if ('e' == elementTag) {
-									int enumConstTypeNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+									int enumConstTypeNameIndex = byteArrayRangeToInt(data, index, 2);
 									index += 2;
-									System.out.println("        enum constant type index: " + enumConstTypeNameIndex + "\n");
-									System.out.println("        enum constant type value: " + arrayOfConstants[enumConstTypeNameIndex] + "\n");
+									println("        enum constant type index: " + enumConstTypeNameIndex + "\n");
+									println("        enum constant type value: " + arrayOfConstants[enumConstTypeNameIndex] + "\n");
 
-									int enumConstNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+									int enumConstNameIndex = byteArrayRangeToInt(data, index, 2);
 									index += 2;
-									System.out.println("        enum constant name index: " + enumConstNameIndex + "\n");
-									System.out.println("        enum constant name value: " + arrayOfConstants[enumConstNameIndex] + "\n");
+									println("        enum constant name index: " + enumConstNameIndex + "\n");
+									println("        enum constant name value: " + arrayOfConstants[enumConstNameIndex] + "\n");
 								}
 								else if ('c' == elementTag) {
-									int classInfoIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+									int classInfoIndex = byteArrayRangeToInt(data, index, 2);
 									index += 2;
-									System.out.println("        class info index: " + classInfoIndex + "\n");
-									System.out.println("        class info value: " + arrayOfConstants[classInfoIndex] + "\n");
+									println("        class info index: " + classInfoIndex + "\n");
+									println("        class info value: " + arrayOfConstants[classInfoIndex] + "\n");
 								}
 								else {
-									System.out.println("WAAAT " + elementTag);
+									printlnError("WAAAT " + elementTag);
 									System.exit(1);
 								}
 
-								System.out.println("        element value index is " + (l+1) + "\n");
+								println("        element value index is " + (l+1) + "\n");
 							}
 
-							System.out.println("      annotation index is " + (k+1) + "\n");
+							println("      annotation index is " + (k+1) + "\n");
 						}
 					}
 					else if ("RuntimeVisibleParameterAnnotations".equals(attributeName)
@@ -1186,46 +1208,46 @@ public class JavaClassFileParser {
 						//     } parameter_annotations[num_parameters];
 						// }
 
-						System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+						println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 						index += 4;
 
 						int numberOfParameters = signBitAsValue(data[index]);
 						index++;
 
-						System.out.println("    number of parameters: " + numberOfParameters + "\n");
+						println("    number of parameters: " + numberOfParameters + "\n");
 
 						for (int k = 0; k < numberOfParameters; k++) {
-							System.out.println("    no idea how to shou annotation stuff");
+							printlnError("    no idea how to shou annotation stuff");
 							System.exit(2);
 						}
 					}
 
-					System.out.println("    attribute[" + (j+1) + "]\n");
+					println("    attribute[" + (j+1) + "]\n");
 				}
 
-				System.out.println("  method[" + (i+1) + "]\n");
+				println("  method[" + (i+1) + "]\n");
 			}
 
 
 			int numberOfAttributes = 0;
 
 			if (data.length >= index+1) {
-				numberOfAttributes = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-				System.out.println("Number of attributes: " + numberOfAttributes + "\n");
+				numberOfAttributes = byteArrayRangeToInt(data, index, 2);
+				println("Number of attributes: " + numberOfAttributes + "\n");
 
 				index +=2;
 			}
 			else {
-				System.out.println("No number of attributes");
+				printlnError("No number of attributes");
 				System.exit(1);
 			}
 
 			for (int i = 0; i < numberOfAttributes; i++) {
-				int attributeNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+				int attributeNameIndex = byteArrayRangeToInt(data, index, 2);
 				index += 2;
-				System.out.println("    attribute name index: " + attributeNameIndex + "");
+				println("    attribute name index: " + attributeNameIndex + "");
 				String attributeName = arrayOfConstants[attributeNameIndex];
-				System.out.println("    attribute name value: " + attributeName + "\n");
+				println("    attribute name value: " + attributeName + "\n");
 
 				if ("InnerClasses".equals(attributeName)) {
 					// InnerClasses_attribute {
@@ -1239,27 +1261,27 @@ public class JavaClassFileParser {
 					//     } classes[number_of_classes];
 					// }
 
-					System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+					println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 					index += 4;
 
-					int numberOfInnerClasses = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+					int numberOfInnerClasses = byteArrayRangeToInt(data, index, 2);
 					index += 2;
-					System.out.println("    number of inner classes: " + numberOfInnerClasses + "\n");
+					println("    number of inner classes: " + numberOfInnerClasses + "\n");
 
 					for (int j = 0; j < numberOfInnerClasses; j++) {
 						//blabla
 						index+=4;
 
 
-						int innerClassNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int innerClassNameIndex = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("      inner class name index: " + innerClassNameIndex);
-						System.out.println("      inner class name value: " + arrayOfConstants[innerClassNameIndex] + "\n");
+						println("      inner class name index: " + innerClassNameIndex);
+						println("      inner class name value: " + arrayOfConstants[innerClassNameIndex] + "\n");
 
 						//flags
 						index += 2;
 
-						System.out.println("      inner class index is " + (j+1) + "\n");
+						println("      inner class index is " + (j+1) + "\n");
 					}
 				}
 				else if ("EnclosingMethod".equals(attributeName)) {
@@ -1270,14 +1292,14 @@ public class JavaClassFileParser {
 					//     u2 method_index;
 					// }
 
-					System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+					println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 					index += 4;
 
-					int classIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+					int classIndex = byteArrayRangeToInt(data, index, 2);
 					index += 2;
-					System.out.println("    enclosing method class index: " + classIndex + "\n");
+					println("    enclosing method class index: " + classIndex + "\n");
 					String className = arrayOfConstants[arrayOfInts[classIndex]];
-					System.out.println("    enclosing method class value: " + className + "\n");
+					println("    enclosing method class value: " + className + "\n");
 
 					index+=2;
 				}
@@ -1287,7 +1309,7 @@ public class JavaClassFileParser {
 					//     u4 attribute_length;
 					// }
 
-					System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+					println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 					index += 4;
 				}
 				else if ("Signature".equals(attributeName)) {
@@ -1297,12 +1319,12 @@ public class JavaClassFileParser {
 					//     u2 signature_index;
 					// }
 
-					System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+					println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 					index += 4;
 
-					int signatureIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+					int signatureIndex = byteArrayRangeToInt(data, index, 2);
 					index += 2;
-					System.out.println("    signature index: " + signatureIndex + "\n");
+					println("    signature index: " + signatureIndex + "\n");
 				}
 				else if ("SourceFile".equals(attributeName)) {
 					// SourceFile_attribute {
@@ -1311,14 +1333,14 @@ public class JavaClassFileParser {
 					//     u2 sourcefile_index;
 					// }
 
-					System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+					println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 					index += 4;
 
-					int sourcefileIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+					int sourcefileIndex = byteArrayRangeToInt(data, index, 2);
 					index += 2;
-					System.out.println("    source file index: " + sourcefileIndex);
+					println("    source file index: " + sourcefileIndex);
 					String sourcefileName = arrayOfConstants[sourcefileIndex];
-					System.out.println("    source file value: " + sourcefileName + "\n");
+					println("    source file value: " + sourcefileName + "\n");
 				}
 				else if ("RuntimeVisibleAnnotations".equals(attributeName) || "RuntimeInvisibleAnnotations".equals(attributeName)) {
 					// RuntimeVisibleAnnotations_attribute {
@@ -1335,12 +1357,12 @@ public class JavaClassFileParser {
 					//     annotation annotations[num_annotations];
 					// }
 
-					System.out.println("    attribute length: " + byteArrayToInt(Arrays.copyOfRange(data, index, index+4)) + "\n");
+					println("    attribute length: " + byteArrayRangeToInt(data, index, 4) + "\n");
 					index += 4;
 
-					int numberOfAnnotations = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+					int numberOfAnnotations = byteArrayRangeToInt(data, index, 2);
 					index += 2;
-					System.out.println("    number of annotations: " + numberOfAnnotations + "\n");
+					println("    number of annotations: " + numberOfAnnotations + "\n");
 
 					for (int k = 0; k < numberOfAnnotations; k++) {
 						// annotation {
@@ -1351,15 +1373,15 @@ public class JavaClassFileParser {
 						//     } element_value_pairs[num_element_value_pairs];
 						// }
 
-						int typeIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int typeIndex = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("      type index: " + typeIndex + "");
+						println("      type index: " + typeIndex + "");
 						String typeName = arrayOfConstants[typeIndex];
-						System.out.println("      type name: " + typeName + "\n");
+						println("      type name: " + typeName + "\n");
 
-						int numberOfValuePairs = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int numberOfValuePairs = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("      number of value pairs: " + numberOfValuePairs + "\n");
+						println("      number of value pairs: " + numberOfValuePairs + "\n");
 
 						//WORK IN PROGRESS
 						for (int l = 0; l < numberOfValuePairs; l++) {
@@ -1381,13 +1403,13 @@ public class JavaClassFileParser {
 							//         } array_value;
 							//     } value;
 							// }
-							int elementNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+							int elementNameIndex = byteArrayRangeToInt(data, index, 2);
 							index += 2;
-							System.out.println("        element name index: " + elementNameIndex);
-							System.out.println("        element name value: " + arrayOfConstants[elementNameIndex] + "\n");
+							println("        element name index: " + elementNameIndex);
+							println("        element name value: " + arrayOfConstants[elementNameIndex] + "\n");
 							char elementTag = (char) signBitAsValue(data[index]);
 							index++;
-							System.out.println("        element tag: " + elementTag + "\n");
+							println("        element tag: " + elementTag + "\n");
 							//The const_value_index item is used if the tag item is one of B, C, D, F, I, J, S, Z, or s. 
 							String tagString = "BCDFIJSZs";
 							boolean useConst = false;
@@ -1399,20 +1421,20 @@ public class JavaClassFileParser {
 							}
 
 							if (useConst) {
-								int unionConstNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-								System.out.println("        union constant index: " + unionConstNameIndex);
-								System.out.println("        union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
+								int unionConstNameIndex = byteArrayRangeToInt(data, index, 2);
+								println("        union constant index: " + unionConstNameIndex);
+								println("        union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
 								index+=2;
 							}
 							else if ('[' == elementTag) {
-								int numberOfArrayValues = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int numberOfArrayValues = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("        number of array values: " + numberOfArrayValues + "\n");
+								println("        number of array values: " + numberOfArrayValues + "\n");
 
 								for (int m = 0; m < numberOfArrayValues; m++) {
 									char arrayElementTag = (char) signBitAsValue(data[index]);
 									index++;
-									System.out.println("          array element tag: " + arrayElementTag + "\n");
+									println("          array element tag: " + arrayElementTag + "\n");
 
 
 									boolean arrayUseConst = false;
@@ -1425,51 +1447,51 @@ public class JavaClassFileParser {
 									}
 
 									if (arrayUseConst) {
-										int unionConstNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-										System.out.println("          union constant index: " + unionConstNameIndex);
-										System.out.println("          union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
+										int unionConstNameIndex = byteArrayRangeToInt(data, index, 2);
+										println("          union constant index: " + unionConstNameIndex);
+										println("          union constant value: " + arrayOfConstants[unionConstNameIndex] + "\n");
 										index+=2;
 									}
 									else if ('c' == arrayElementTag) {
-										int classInfoIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+										int classInfoIndex = byteArrayRangeToInt(data, index, 2);
 										index += 2;
-										System.out.println("          class info index: " + classInfoIndex + "\n");
-										System.out.println("          class info value: " + arrayOfConstants[classInfoIndex] + "\n");
+										println("          class info index: " + classInfoIndex + "\n");
+										println("          class info value: " + arrayOfConstants[classInfoIndex] + "\n");
 									}
 									else {
-										System.out.println("WAAAT " + elementTag);
+										printlnError("WAAAT " + elementTag);
 										System.exit(1);
 									}
 
-									System.out.println("          array element index is " + (m+1) + "\n");
+									println("          array element index is " + (m+1) + "\n");
 								}
 							}
 							else if ('e' == elementTag) {
-								int enumConstTypeNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int enumConstTypeNameIndex = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("        enum constant type index: " + enumConstTypeNameIndex + "\n");
-								System.out.println("        enum constant type value: " + arrayOfConstants[enumConstTypeNameIndex] + "\n");
+								println("        enum constant type index: " + enumConstTypeNameIndex + "\n");
+								println("        enum constant type value: " + arrayOfConstants[enumConstTypeNameIndex] + "\n");
 
-								int enumConstNameIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int enumConstNameIndex = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("        enum constant name index: " + enumConstNameIndex + "\n");
-								System.out.println("        enum constant name value: " + arrayOfConstants[enumConstNameIndex] + "\n");
+								println("        enum constant name index: " + enumConstNameIndex + "\n");
+								println("        enum constant name value: " + arrayOfConstants[enumConstNameIndex] + "\n");
 							}
 							else if ('c' == elementTag) {
-								int classInfoIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+								int classInfoIndex = byteArrayRangeToInt(data, index, 2);
 								index += 2;
-								System.out.println("        class info index: " + classInfoIndex + "\n");
-								System.out.println("        class info value: " + arrayOfConstants[classInfoIndex] + "\n");
+								println("        class info index: " + classInfoIndex + "\n");
+								println("        class info value: " + arrayOfConstants[classInfoIndex] + "\n");
 							}
 							else {
-								System.out.println("WAAAT " + elementTag);
+								printlnError("WAAAT " + elementTag);
 								System.exit(1);
 							}
 
-							System.out.println("        element value index is " + (l+1) + "\n");
+							println("        element value index is " + (l+1) + "\n");
 						}
 
-						System.out.println("      annotation index is " + (k+1) + "\n");
+						println("      annotation index is " + (k+1) + "\n");
 					}
 				}
 				else if ("SourceDebugExtension".equals(attributeName)) {
@@ -1479,8 +1501,8 @@ public class JavaClassFileParser {
 					//     u1 debug_extension[attribute_length];
 					// }
 
-					int attributeLength = byteArrayToInt(Arrays.copyOfRange(data, index, index+4));
-					System.out.println("    attribute length: " + attributeLength + "\n");
+					int attributeLength = byteArrayRangeToInt(data, index, 4);
+					println("    attribute length: " + attributeLength + "\n");
 					index+=4;
 
 					index += attributeLength;
@@ -1492,8 +1514,8 @@ public class JavaClassFileParser {
 					//     u1 debug_extension[attribute_length];
 					// }
 
-					int attributeLength = byteArrayToInt(Arrays.copyOfRange(data, index, index+4));
-					System.out.println("    attribute length: " + attributeLength + "\n");
+					int attributeLength = byteArrayRangeToInt(data, index, 4);
+					println("    attribute length: " + attributeLength + "\n");
 					index+=4;
 
 					index += attributeLength;
@@ -1509,41 +1531,41 @@ public class JavaClassFileParser {
 					//     } bootstrap_methods[num_bootstrap_methods];
 					// }
 
-					int attributeLength = byteArrayToInt(Arrays.copyOfRange(data, index, index+4));
-					System.out.println("    attribute length: " + attributeLength + "\n");
+					int attributeLength = byteArrayRangeToInt(data, index, 4);
+					println("    attribute length: " + attributeLength + "\n");
 					index+=4;
 
-					int numberOfBootstrapMethods = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-					System.out.println("    number of bootstrap methods: " + numberOfBootstrapMethods + "\n");
+					int numberOfBootstrapMethods = byteArrayRangeToInt(data, index, 2);
+					println("    number of bootstrap methods: " + numberOfBootstrapMethods + "\n");
 					index += 2;
 
 					for (int j = 0; j < numberOfBootstrapMethods; j++) {
-						int methodRef = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int methodRef = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    bootstrap method reference is " + methodRef + "\n");
+						println("    bootstrap method reference is " + methodRef + "\n");
 
-						int numberOfBootstrapArguments = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
+						int numberOfBootstrapArguments = byteArrayRangeToInt(data, index, 2);
 						index += 2;
-						System.out.println("    number of arguments " + numberOfBootstrapArguments + "\n");
+						println("    number of arguments " + numberOfBootstrapArguments + "\n");
 
 						for (int k = 0; k < numberOfBootstrapArguments; k++) {
-							int bootstrapArgumentConstantIndex = signBitAsValue(data[index])*256+signBitAsValue(data[index+1]);
-							System.out.println("      argument constant index " + bootstrapArgumentConstantIndex + "\n");
+							int bootstrapArgumentConstantIndex = byteArrayRangeToInt(data, index, 2);
+							println("      argument constant index " + bootstrapArgumentConstantIndex + "\n");
 							index += 2;
 						}
 
-						System.out.println("    bootstrap method index is " + (j+1) + "\n");
+						println("    bootstrap method index is " + (j+1) + "\n");
 					}
 				}
 
-				System.out.println("    attribute index is " + (i+1) + "\n");
+				println("    attribute index is " + (i+1) + "\n");
 			}
 
 			if (data.length == index) {
-				System.out.println("Success!!");
+				println("Success!!");
 			}
 			else {
-				System.out.println("Failure!!");
+				println("Failure!!");
 			}
 		}
 	}
