@@ -2,8 +2,34 @@ import java.io.File;
 import java.io.FileInputStream;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
 
 public class HackMap {
+
+
+	private Map<String, Object> storage = new HashMap<String, Object>();
+
+	public void put(String key, Object value) {
+		storage.put(key, value);
+	}
+
+	public int getInt(String key) {
+		return (Integer) storage.get(key);
+	}
+
+	public boolean getBoolean(String key) {
+		return (Boolean) storage.get(key);
+	}
+
+	public String getString(String key) {
+		return (String) storage.get(key);
+	}
+
+	public HackMap getHackMap(String key) {
+		return (HackMap) storage.get(key);
+	}
+
 
 	private static byte[] readContentIntoByteArray(File file) {
 		FileInputStream fileInputStream = null;
@@ -31,6 +57,7 @@ public class HackMap {
 		return bFile;
 	}
 
+
 	public static int signBitAsValue(byte value) {
 		return value & 0xFF;
 	}
@@ -54,14 +81,6 @@ public class HackMap {
 		return byteArrayToInt(Arrays.copyOfRange(input, from, from+length));
 	}
 
-	public static int twoUnsignedBytesToInt(byte byte1, byte byte2) {
-		byte[] input = new byte[2];
-		input[0] = byte1;
-		input[1] = byte2;
-
-		return byteArrayToInt(input);
-	}
-
 
 	private static void println(String string) {
 		System.out.println(string);
@@ -73,6 +92,107 @@ public class HackMap {
 
 	private static void printlnError(String string) {
 		System.err.println(string);
+	}
+
+
+
+	public static HackMap checkByteArrayNonZeroLength(byte[] input) {
+		HackMap result = new HackMap();
+
+		if (input.length > 0) {
+			result.put("Succeded", true);
+			result.put("Message", "File length is " + input.length + " bytes");
+		}
+		else {
+			result.put("Succeded", false);
+			result.put("ErrorText", "Failure reading file or it is empty");
+		}
+
+		return result;
+	}
+
+	public static HackMap checkMagic(byte[] input) {
+		HackMap result = new HackMap();
+
+		final int JAVA_CLASS_MAGIC = 0xCAFEBABE;
+
+		if (input.length >= 4 && byteArrayRangeToInt(input, 0, 4) == JAVA_CLASS_MAGIC) {
+			result.put("Succeded", true);
+			result.put("Message", "Magic is right");
+		}
+		else {
+			result.put("Succeded", false);
+			result.put("ErrorText", "First bytes must contain \"magic\" values");
+		}
+
+		return result;
+	}
+
+	public static HackMap checkVersionNumber(byte[] data) {
+		HackMap result = new HackMap();
+
+		if (data.length >= 8) {
+			final String VERSION_NOT_FOUND = "not found";
+			String majorVersionJava = VERSION_NOT_FOUND;
+
+			int minorVersionNumber = byteArrayRangeToInt(data, 4, 2);
+			//not sure what to do with it
+
+			int majorVersionNumber = byteArrayRangeToInt(data, 6, 2);
+
+			switch(majorVersionNumber) {
+				case 0x35: majorVersionJava = "Java SE 9"; break;
+				case 0x34: majorVersionJava = "Java SE 8"; break;
+				case 0x33: majorVersionJava = "Java SE 7"; break;
+				case 0x32: majorVersionJava = "Java SE 6.0"; break;
+				case 0x31: majorVersionJava = "Java SE 5.0"; break;
+				case 0x30: majorVersionJava = "JDK 1.4"; break;
+				case 0x2F: majorVersionJava = "JDK 1.3"; break;
+				case 0x2E: majorVersionJava = "JDK 1.2"; break;
+				case 0x2D: majorVersionJava = "JDK 1.1"; break;
+			}
+
+			if (majorVersionJava.equals(VERSION_NOT_FOUND)) {
+				result.put("Succeded", false);
+				result.put("ErrorText", "Can not identify version of java compiler");
+			}
+			else {
+				result.put("Succeded", true);
+				result.put("MajorVersionNumber", majorVersionNumber);
+				result.put("Message", "Major version is " + majorVersionNumber);
+			}
+		}
+		else {
+			result.put("Succeded", false);
+			result.put("ErrorText", "Not enough data to determine java compiler version");
+		}
+
+		return result;
+	}
+
+	public static HackMap checkIndexReachedArrayLength(byte[] input, int currentIndex) {
+		HackMap result = new HackMap();
+
+		if (input.length == currentIndex) {
+			result.put("Succeded", true);
+			result.put("Message", "Whole file parsing was completed");
+		}
+		else {
+			result.put("Succeded", false);
+			result.put("ErrorText", "Parts of class file were not analyzed");
+		}
+
+		return result;		
+	}
+
+
+	public static void evaluateResult(HackMap result, int exitCode) {
+		if (result.getBoolean("Succeded"))
+			println(result.getString("Message")+"\n");
+		else {
+			printlnError(result.getString("ErrorText"));
+			System.exit(exitCode);
+		}
 	}
 
 
@@ -88,57 +208,21 @@ public class HackMap {
 
 			byte[] data = readContentIntoByteArray(new File(args[0]));
 
-			if (data.length > 0)
-				println("File length: " + data.length + " bytes\n");
-			else {
-				printlnError("Failure reading file or it is empty");
-				System.exit(1);
-			}
+
+			HackMap lengthCheckResult = checkByteArrayNonZeroLength(data);
+
+			evaluateResult(lengthCheckResult, 1);
 
 
-			int firstFourBytesOfJavaClass = 0xCAFEBABE;
+			HackMap magicCheckResult = checkMagic(data);
 
-			if (data.length >= 4
-				&& byteArrayRangeToInt(data, 0, 4) == firstFourBytesOfJavaClass)
-				println("Magic is right\n");
-			else {
-				printlnError("First bytes must contain \"magic\" values");
-				System.exit(1);
-			}
+			evaluateResult(magicCheckResult, 2);
 
 
-			if (data.length >= 8) {
-				final String VERSION_NOT_FOUND = "not found";
-				String majorVersionJava = VERSION_NOT_FOUND;
+			HackMap versionNumberCheckResult = checkVersionNumber(data);
 
-				int minorVersionNumber = byteArrayRangeToInt(data, 4, 2);
-				//not sure what to do with it
+			evaluateResult(versionNumberCheckResult, 3);
 
-				int majorVersionNumber = byteArrayRangeToInt(data, 6, 2);
-
-				switch(majorVersionNumber) {
-					case 0x35: majorVersionJava = "Java SE 9"; break;
-					case 0x34: majorVersionJava = "Java SE 8"; break;
-					case 0x33: majorVersionJava = "Java SE 7"; break;
-					case 0x32: majorVersionJava = "Java SE 6.0"; break;
-					case 0x31: majorVersionJava = "Java SE 5.0"; break;
-					case 0x30: majorVersionJava = "JDK 1.4"; break;
-					case 0x2F: majorVersionJava = "JDK 1.3"; break;
-					case 0x2E: majorVersionJava = "JDK 1.2"; break;
-					case 0x2D: majorVersionJava = "JDK 1.1"; break;
-				}
-
-				if (majorVersionJava.equals(VERSION_NOT_FOUND)) {
-					printlnError("Can not identify version of java compiler");
-					System.exit(1);
-				}
-
-				println("Major version: " + majorVersionJava + "\n");
-			}
-			else {
-				printlnError("Can not identify version of java compiler");
-				System.exit(1);
-			}
 
 			int numberOfConstants = -1;
 
@@ -1561,12 +1645,10 @@ public class HackMap {
 				println("    attribute index is " + (i+1) + "\n");
 			}
 
-			if (data.length == index) {
-				println("Success!!");
-			}
-			else {
-				println("Failure!!");
-			}
+
+			HackMap indexCheckResult = checkIndexReachedArrayLength(data, index);
+
+			evaluateResult(indexCheckResult, 2);
 		}
 	}
 
