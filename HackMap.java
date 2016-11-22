@@ -89,6 +89,9 @@ public class HackMap {
 		return byteArrayToInt(Arrays.copyOfRange(input, from, from+length));
 	}
 
+	public static short byteArrayPartToShort(byte[] input, int from) {
+		return (short) ( ((input[from]&0xFF)<<8) | (input[from+1]&0xFF) );
+	}
 
 	private static void println(String string) {
 		System.out.println(string);
@@ -196,6 +199,7 @@ public class HackMap {
 
 			String[] arrayOfConstants = new String[numberOfConstants+1];
 			int[] arrayOfInts = new int[numberOfConstants+1];
+			int[] arrayOfIntsSecond = new int[numberOfConstants+1];
 
 			if (numberOfConstants > 0) {
 				// CONSTANT_Utf8				1
@@ -284,9 +288,8 @@ public class HackMap {
 						// 	u1 tag;
 						// 	u2 name_index;
 						// }
-						int nameIndex = byteArrayRangeToInt(input, index, 2);
-						arrayOfInts[i] = nameIndex;
-						message += nameIndex + "\n";
+						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+						message += arrayOfInts[i] + "\n";
 
 						index += 2;
 					}
@@ -297,7 +300,8 @@ public class HackMap {
 						// 	u2 string_index;
 						// }
 
-						message += byteArrayRangeToInt(input, index, 2) + "\n";
+						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+						message += arrayOfInts[i] + "\n";
 
 						index += 2;
 					}
@@ -308,9 +312,11 @@ public class HackMap {
 						// 	u2 class_index;
 						// 	u2 name_and_type_index;
 						// }
+						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+						message += arrayOfInts[i] + "\n";
 
-						message += byteArrayRangeToInt(input, index, 2) + "\n";
-						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
+						arrayOfIntsSecond[i] = byteArrayRangeToInt(input, index+2, 2);
+						message += arrayOfIntsSecond[i] + "\n";
 
 						index += 4;
 					}
@@ -348,8 +354,11 @@ public class HackMap {
 						// 	u2 descriptor_index;
 						// }
 
-						message += byteArrayRangeToInt(input, index, 2) + "\n";
-						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
+						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+						message += arrayOfInts[i] + "\n";
+
+						arrayOfIntsSecond[i] = byteArrayRangeToInt(input, index+2, 2);
+						message += arrayOfIntsSecond[i] + "\n";
 
 						index+=4;
 					}
@@ -402,8 +411,9 @@ public class HackMap {
 					result.put("Succeded", true);
 					result.put("Message", message);
 					result.put("NextIndex", index);
-					result.put("ArrayOfConstants", arrayOfConstants);
+					result.put("ArrayOfUTF8Constants", arrayOfConstants);
 					result.put("ArrayOfInts", arrayOfInts);
+					result.put("ArrayOfIntsSecond", arrayOfIntsSecond);
 				}
 			}
 			else {
@@ -479,8 +489,9 @@ public class HackMap {
 			evaluateResult(constantParseResult, 4);
 
 			int index = constantParseResult.getInt("NextIndex");
-			String[] arrayOfConstants = (String[]) constantParseResult.getObject("ArrayOfConstants");
+			String[] arrayOfConstants = (String[]) constantParseResult.getObject("ArrayOfUTF8Constants");
 			int[] arrayOfInts = (int[]) constantParseResult.getObject("ArrayOfInts");
+			int[] arrayOfIntsSecond = (int[]) constantParseResult.getObject("ArrayOfIntsSecond");
 
 
 			if (data.length >= index+1) {
@@ -858,10 +869,22 @@ public class HackMap {
 								case 0x03:
 									commandName += "iconst_0"; //load the int value 0 onto the stack
 									break;
+								case 0x04:
+									commandName += "iconst_1"; //load the int value 1 onto the stack
+									break;
 								case 0x10:
 									commandName += "bipush"; //push a byte onto the stack as an integer value
 									commandName += " " + data[index+tempIndex+1];
 									tempIndex ++;
+									break;
+								case 0x12:
+									commandName += "ldc"; //push a constant #index from a constant pool (String, int or float) onto the stack
+									commandName += " #" + data[index+tempIndex+1];
+									commandName += "\t\t\t\t//" + arrayOfConstants[arrayOfInts[data[index+tempIndex+1]]];
+									tempIndex ++;
+									break;
+								case 0x1b:
+									commandName += "iload_1"; //load an int value from local variable 1
 									break;
 								case 0x2a:
 									commandName += "aload_0"; //load a reference onto the stack from local variable 0
@@ -869,8 +892,31 @@ public class HackMap {
 								case 0x3c:
 									commandName += "istore_1"; //store int value into variable 1
 									break;
+								case 0xa2:
+									commandName += "if_icmpge"; //if value1 is greater than or equal to value2, branch to instruction at branchoffset (signed short constructed from unsigned bytes branchbyte1 << 8 + branchbyte2)
+									commandName += " " + (byteArrayPartToShort(data, index+tempIndex+1) + tempIndex);
+									tempIndex += 2;
+									break;
 								case 0xb1:
 									commandName += "return"; //return void from method
+									break;
+								case 0xb2:
+									//current implementation works ONLY for fields
+									int getstaticArg = byteArrayRangeToInt(data, index+tempIndex+1, 2);
+									commandName += "getstatic"; //get a static field value of a class, where the field is identified by field reference in the constant pool index (indexbyte1 << 8 + indexbyte2)
+									commandName += " #" + getstaticArg;
+									commandName += "\t//" + arrayOfConstants[arrayOfInts[arrayOfInts[getstaticArg]]];
+									commandName += "." + arrayOfConstants[arrayOfInts[arrayOfIntsSecond[getstaticArg]]];
+									String typeOrSignature = arrayOfConstants[arrayOfIntsSecond[arrayOfIntsSecond[getstaticArg]]];
+									if (typeOrSignature.charAt(0) == '(') {
+										//nothing to add
+									}
+									else {
+										//field
+										commandName += ":";
+									}
+									commandName += typeOrSignature;
+									tempIndex += 2;
 									break;
 								case 0xb5:
 									commandName += "putfield"; //set field to value in an object objectref, where the field is identified by a field reference index in constant pool (indexbyte1 << 8 + indexbyte2)
@@ -879,7 +925,7 @@ public class HackMap {
 									break;
 								case 0xb7:
 									commandName += "invokespecial"; //invoke instance method on object objectref and puts the result on the stack (might be void); the method is identified by method reference index in constant pool (indexbyte1 << 8 + indexbyte2)
-									commandName += " #" + byteArrayRangeToInt(data, index+tempIndex+1, 2);
+									commandName += " " + byteArrayRangeToInt(data, index+tempIndex+1, 2);
 									tempIndex += 2;
 									break;
 								default:
