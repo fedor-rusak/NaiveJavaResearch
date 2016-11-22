@@ -848,6 +848,50 @@ public class HackMap {
 						index += 4;
 
 						println("    No idea how to show bytecode now\n");
+						int tempIndex = 0;
+						while (tempIndex < lengthOfCode){
+							int byteCodeValue = signBitAsValue(data[index + tempIndex]);
+
+							String commandName = String.format("%03d", tempIndex) + ": " + String.format("%02x", byteCodeValue) + " ";
+
+							switch(byteCodeValue) {
+								case 0x03:
+									commandName += "iconst_0"; //load the int value 0 onto the stack
+									break;
+								case 0x10:
+									commandName += "bipush"; //push a byte onto the stack as an integer value
+									commandName += " " + data[index+tempIndex+1];
+									tempIndex ++;
+									break;
+								case 0x2a:
+									commandName += "aload_0"; //load a reference onto the stack from local variable 0
+									break;
+								case 0x3c:
+									commandName += "istore_1"; //store int value into variable 1
+									break;
+								case 0xb1:
+									commandName += "return"; //return void from method
+									break;
+								case 0xb5:
+									commandName += "putfield"; //set field to value in an object objectref, where the field is identified by a field reference index in constant pool (indexbyte1 << 8 + indexbyte2)
+									commandName += " #" + byteArrayRangeToInt(data, index+tempIndex+1, 2);
+									tempIndex += 2;
+									break;
+								case 0xb7:
+									commandName += "invokespecial"; //invoke instance method on object objectref and puts the result on the stack (might be void); the method is identified by method reference index in constant pool (indexbyte1 << 8 + indexbyte2)
+									commandName += " #" + byteArrayRangeToInt(data, index+tempIndex+1, 2);
+									tempIndex += 2;
+									break;
+								default:
+									commandName += "wtf?";
+									break;
+							}
+
+
+							println("    " + commandName +"\n");
+							tempIndex++;
+						} 
+
 						index += lengthOfCode;
 
 						int lengthOfExceptionTable = byteArrayRangeToInt(data, index, 2);
