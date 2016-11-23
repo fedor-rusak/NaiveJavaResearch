@@ -111,11 +111,11 @@ public class HackMap {
 		HackMap result = new HackMap();
 
 		if (input.length > 0) {
-			result.put("Succeded", true);
+			result.put("Succeded?", true);
 			result.put("Message", "File length is " + input.length + " bytes");
 		}
 		else {
-			result.put("Succeded", false);
+			result.put("Succeded?", false);
 			result.put("ErrorText", "Failure reading file or it is empty");
 		}
 
@@ -128,11 +128,11 @@ public class HackMap {
 		final int JAVA_CLASS_MAGIC = 0xCAFEBABE;
 
 		if (input.length >= 4 && byteArrayRangeToInt(input, 0, 4) == JAVA_CLASS_MAGIC) {
-			result.put("Succeded", true);
+			result.put("Succeded?", true);
 			result.put("Message", "Magic is right");
 		}
 		else {
-			result.put("Succeded", false);
+			result.put("Succeded?", false);
 			result.put("ErrorText", "First bytes must contain \"magic\" values");
 		}
 
@@ -164,24 +164,24 @@ public class HackMap {
 			}
 
 			if (majorVersionJava.equals(VERSION_NOT_FOUND)) {
-				result.put("Succeded", false);
+				result.put("Succeded?", false);
 				result.put("ErrorText", "Can not identify version of java compiler");
 			}
 			else {
-				result.put("Succeded", true);
+				result.put("Succeded?", true);
 				result.put("MajorVersionNumber", majorVersionNumber);
 				result.put("Message", "Major version is " + majorVersionNumber);
 			}
 		}
 		else {
-			result.put("Succeded", false);
+			result.put("Succeded?", false);
 			result.put("ErrorText", "Not enough data to determine java compiler version");
 		}
 
 		return result;
 	}
 
-	public static HackMap parseConstants(byte[] input) {
+	public static HackMap parseConstantPoolData(byte[] input) {
 		HackMap result = new HackMap();
 
 		String message;
@@ -192,7 +192,7 @@ public class HackMap {
 
 			result.put("NumberOfConstants", numberOfConstants);
 
-			message = "Number of constants is " + numberOfConstants + "\n";
+			message = "Number of constants is " + numberOfConstants + "\n\n";
 
 
 			int index = 10;
@@ -223,192 +223,202 @@ public class HackMap {
 					int constantTag = signBitAsValue(input[index]);
 					index++;
 
-					String type = "";
+					String type = null;
+					String constantLog = "";
+					boolean constantTagWasIdentified = true;
 
-					if (1 == constantTag) {
-						type = "Utf8";
-						// CONSTANT_Utf8_info {
-						// 	u1 tag;
-						// 	u2 length;
-						// 	u1 bytes[length];
-						// }
+					switch(constantTag) {
+						case 1:
+							type = "Utf8";
+							// CONSTANT_Utf8_info {
+							// 	u1 tag;
+							// 	u2 length;
+							// 	u1 bytes[length];
+							// }
 
-						int length = byteArrayRangeToInt(input, index, 2);
-						index += 2;
-						message += length + "\n";
+							int length = byteArrayRangeToInt(input, index, 2);
+							index += 2;
+							constantLog += "    " + length + "\n";
 
-						byte[] utf8Data = Arrays.copyOfRange(input, index, index+length);
-						message += new String(utf8Data) + "\n";
+							byte[] utf8Data = Arrays.copyOfRange(input, index, index+length);
+							constantLog += "    " + new String(utf8Data);
 
-						arrayOfConstants[i] = new String(utf8Data);
+							arrayOfConstants[i] = new String(utf8Data);
 
-						index += length;
+							index += length;
+							break;
+						case 3:
+							type = "Integer";
+							// CONSTANT_Integer_info {
+							// 	u1 tag;
+							// 	u4 bytes;
+							// }
+							constantLog += "    " +  byteArrayRangeToInt(input, index, 4);
+							index += 4;
+							break;
+						case 4:
+							type = "Float";
+							// CONSTANT_Float_info {
+							// 	u1 tag;
+							// 	u4 bytes;
+							// }
+
+							index += 4;
+							break;
+						case 5:
+							type = "Long";
+							// CONSTANT_Long_info {
+							// 	u1 tag;
+							// 	u4 high_bytes;
+							// 	u4 low_bytes;
+							// }
+							index += 8;
+							break;
+						case 6:
+							type = "Double";
+							// CONSTANT_Double_info {
+							// 	u1 tag;
+							// 	u4 high_bytes;
+							// 	u4 low_bytes;
+							// }
+
+							index += 8;
+							break;
+						case 7:
+							type = "Class";
+							// CONSTANT_Class_info {
+							// 	u1 tag;
+							// 	u2 name_index;
+							// }
+							arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+							constantLog += "    " +  arrayOfInts[i];
+
+							index += 2;
+							break;
+						case 8:
+							type = "String";
+							// CONSTANT_String_info {
+							// 	u1 tag;
+							// 	u2 string_index;
+							// }
+
+							arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+							constantLog += "    " +  arrayOfInts[i];
+
+							index += 2;
+							break;
+						case 9:
+							type = "Field Reference";
+							// CONSTANT_Fieldref_info {
+							// 	u1 tag;
+							// 	u2 class_index;
+							// 	u2 name_and_type_index;
+							// }
+							arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+							constantLog += "    " +  arrayOfInts[i] + "\n";
+
+							arrayOfIntsSecond[i] = byteArrayRangeToInt(input, index+2, 2);
+							constantLog += "    " +  arrayOfIntsSecond[i];
+
+							index += 4;
+							break;
+						case 10:
+							type = "Method Reference";
+							// CONSTANT_Methodref_info {
+							// 	u1 tag;
+							// 	u2 class_index;
+							// 	u2 name_and_type_index;
+							// }
+
+							arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+							constantLog += "    " +  arrayOfInts[i] + "\n";
+
+							arrayOfIntsSecond[i] = byteArrayRangeToInt(input, index+2, 2);
+							constantLog += "    " +  arrayOfIntsSecond[i];
+
+							index+=4;
+							break;
+						case 11:
+							type = "Interface Method Reference";
+							// CONSTANT_InterfaceMethodref_info {
+							// 	u1 tag;
+							// 	u2 class_index;
+							// 	u2 name_and_type_index;
+							// }
+
+							constantLog += "    " +  byteArrayRangeToInt(input, index, 2) + "\n";
+							constantLog += "    " +  byteArrayRangeToInt(input, index+2, 2);
+
+							index+=4;
+							break;
+						case 12:
+							type = "Name and Type";
+							// CONSTANT_NameAndType_info {
+							// 	u1 tag;
+							// 	u2 name_index;
+							// 	u2 descriptor_index;
+							// }
+
+							arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
+							constantLog += "    " +  arrayOfInts[i] + "\n";
+
+							arrayOfIntsSecond[i] = byteArrayRangeToInt(input, index+2, 2);
+							constantLog += "    " +  arrayOfIntsSecond[i];
+
+							index+=4;
+							break;
+						case 15:
+							type = "Method Handle";
+							// CONSTANT_MethodHandle_info {
+							//     u1 tag;
+							//     u1 reference_kind;
+							//     u2 reference_index;
+							// }
+
+							index += 3;
+							break;
+						case 16:
+							type = "Method Type";
+							// CONSTANT_MethodType_info {
+							//     u1 tag;
+							//     u2 descriptor_index;
+							// }
+
+							index += 2;
+							break;
+						case 18:
+							type = "Invoke Dynamic";
+							// CONSTANT_InvokeDynamic_info {
+							//     u1 tag;
+							//     u2 bootstrap_method_attr_index;
+							//     u2 name_and_type_index;
+							// }
+
+							index += 4;
+							break;
+						default:
+							constantTagWasIdentified = false;
+							break;
 					}
-					else if (3 == constantTag) {
-						type = "Integer";
-						// CONSTANT_Integer_info {
-						// 	u1 tag;
-						// 	u4 bytes;
-						// }
-						message += byteArrayRangeToInt(input, index, 4) + "\n";
-						index += 4;
-					}
-					else if (4 == constantTag) {
-						type = "Float";
-						// CONSTANT_Float_info {
-						// 	u1 tag;
-						// 	u4 bytes;
-						// }
-
-						index += 4;
-					}
-					else if (5 == constantTag) {
-						type = "Long";
-						// CONSTANT_Long_info {
-						// 	u1 tag;
-						// 	u4 high_bytes;
-						// 	u4 low_bytes;
-						// }
-
-						index += 8;
-					}
-					else if (6 == constantTag) {
-						type = "Double";
-						// CONSTANT_Double_info {
-						// 	u1 tag;
-						// 	u4 high_bytes;
-						// 	u4 low_bytes;
-						// }
-
-						index += 8;
-					}
-					else if (7 == constantTag) {
-						type = "Class";
-						// CONSTANT_Class_info {
-						// 	u1 tag;
-						// 	u2 name_index;
-						// }
-						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
-						message += arrayOfInts[i] + "\n";
-
-						index += 2;
-					}
-					else if (8 == constantTag) {
-						type = "String";
-						// CONSTANT_String_info {
-						// 	u1 tag;
-						// 	u2 string_index;
-						// }
-
-						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
-						message += arrayOfInts[i] + "\n";
-
-						index += 2;
-					}
-					else if (9 == constantTag) {
-						type = "Field Reference";
-						// CONSTANT_Fieldref_info {
-						// 	u1 tag;
-						// 	u2 class_index;
-						// 	u2 name_and_type_index;
-						// }
-						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
-						message += arrayOfInts[i] + "\n";
-
-						arrayOfIntsSecond[i] = byteArrayRangeToInt(input, index+2, 2);
-						message += arrayOfIntsSecond[i] + "\n";
-
-						index += 4;
-					}
-					else if (10 == constantTag) {
-						type = "Method Reference";
-						// CONSTANT_Methodref_info {
-						// 	u1 tag;
-						// 	u2 class_index;
-						// 	u2 name_and_type_index;
-						// }
-
-						message += byteArrayRangeToInt(input, index, 2) + "\n";
-						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
-
-						index+=4;
-					}
-					else if (11 == constantTag) {
-						type = "Interface Method Reference";
-						// CONSTANT_InterfaceMethodref_info {
-						// 	u1 tag;
-						// 	u2 class_index;
-						// 	u2 name_and_type_index;
-						// }
-
-						message += byteArrayRangeToInt(input, index, 2) + "\n";
-						message += byteArrayRangeToInt(input, index+2, 2) + "\n";
-
-						index+=4;
-					}
-					else if (12 == constantTag) {
-						type = "Name and Type";
-						// CONSTANT_NameAndType_info {
-						// 	u1 tag;
-						// 	u2 name_index;
-						// 	u2 descriptor_index;
-						// }
-
-						arrayOfInts[i] = byteArrayRangeToInt(input, index, 2);
-						message += arrayOfInts[i] + "\n";
-
-						arrayOfIntsSecond[i] = byteArrayRangeToInt(input, index+2, 2);
-						message += arrayOfIntsSecond[i] + "\n";
-
-						index+=4;
-					}
-					else if (15 == constantTag){
-						type = "Method Handle";
-						// CONSTANT_MethodHandle_info {
-						//     u1 tag;
-						//     u1 reference_kind;
-						//     u2 reference_index;
-						// }
-
-						index += 3;
-					}
-					else if (16 == constantTag){
-						type = "Method Type";
-						// CONSTANT_MethodType_info {
-						//     u1 tag;
-						//     u2 descriptor_index;
-						// }
-
-						index += 2;
-					}
-					else if (18 == constantTag) {
-						type = "Invoke Dynamic";
-						// CONSTANT_InvokeDynamic_info {
-						//     u1 tag;
-						//     u2 bootstrap_method_attr_index;
-						//     u2 name_and_type_index;
-						// }
-
-						index += 4;
-					}
 
 
-					if ("".equals(type)) {
-						result.put("Succeded", false);
+					if (constantTagWasIdentified == false) {
+						result.put("Succeded?", false);
 						result.put("ErrorText", "Failed to get tag for constant["+i+"]");
 						break;
 					}
 
+					message += "  " +  "Constant["+i+"] is " + type + "\n" + constantLog;
 
-					message += "  Constant["+i+"] is " + type + "\n";
-
+					if (i != numberOfConstants-1)
+						message += "\n\n";
 
 					i++;
 				}
 
-				if (result.contains("Succeded") == false) {
-					//if error was not triggered during constant analysis
-					result.put("Succeded", true);
+				if (result.contains("Succeded?") == false) {
+					//if error was not triggered during constant pool analysis
+					result.put("Succeded?", true);
 					result.put("Message", message);
 					result.put("NextIndex", index);
 					result.put("ArrayOfUTF8Constants", arrayOfConstants);
@@ -417,12 +427,12 @@ public class HackMap {
 				}
 			}
 			else {
-				result.put("Succeded", false);
+				result.put("Succeded?", false);
 				result.put("ErrorText", "Wrong number of constants");
 			}
 		}
 		else {
-			result.put("Succeded", false);
+			result.put("Succeded?", false);
 			result.put("ErrorText", "Not enough data to get number of constants");
 		}
 
@@ -430,15 +440,127 @@ public class HackMap {
 		return result;
 	}
 
+	public static HackMap parseBytecode(byte[] input, int startIndex, int lengthOfCode, int[] arrayOfInts, int[] arrayOfIntsSecond, String[] arrayOfConstants) {
+		HackMap result = new HackMap();
+
+		if (input.length >= startIndex+lengthOfCode) {
+			String message = "    Bytecode with length of " + lengthOfCode + "\n\n";
+
+			int relativeIndex = 0;
+			while (relativeIndex < lengthOfCode){
+				int absoluteIndex = startIndex + relativeIndex;
+				int byteCodeValue = signBitAsValue(input[absoluteIndex]);
+
+				String commandLog = String.format("%03d", relativeIndex) + ": " + String.format("%02x", byteCodeValue) + " ";
+
+				switch(byteCodeValue) {
+					case 0x03:
+						commandLog += "iconst_0"; //load the int value 0 onto the stack
+						break;
+					case 0x04:
+						commandLog += "iconst_1"; //load the int value 1 onto the stack
+						break;
+					case 0x10:
+						commandLog += "bipush"; //push a byte onto the stack as an integer value
+						commandLog += "\t\t\t\t" + input[absoluteIndex+1];
+						relativeIndex ++;
+						break;
+					case 0x12:
+						commandLog += "ldc"; //push a constant #index from a constant pool (String, int or float) onto the stack
+						commandLog += "\t\t\t\t\t\t#" + input[absoluteIndex+1];
+						commandLog += "\t\t//" + arrayOfConstants[arrayOfInts[input[absoluteIndex+1]]];
+						relativeIndex ++;
+						break;
+					case 0x1b:
+						commandLog += "iload_1"; //load an int value from local variable 1
+						break;
+					case 0x2a:
+						commandLog += "aload_0"; //load a reference onto the stack from local variable 0
+						break;
+					case 0x3c:
+						commandLog += "istore_1"; //store int value into variable 1
+						break;
+					case 0x84:
+						commandLog += "iinc"; //increment local variable #index by signed byte const
+						commandLog += " " + signBitAsValue(input[absoluteIndex+1]);
+						commandLog += ", " + input[absoluteIndex+2];
+						relativeIndex += 2;
+						break;
+					case 0xa2:
+						commandLog += "if_icmpge"; //if value1 is greater than or equal to value2, branch to instruction at branchoffset (signed short constructed from unsigned bytes branchbyte1 << 8 + branchbyte2)
+						commandLog += "\t\t\t" + (byteArrayPartToShort(input, absoluteIndex+1) + relativeIndex);
+						relativeIndex += 2;
+						break;
+					case 0xa7:
+						commandLog += "goto"; //goes to another instruction at branchoffset (signed short constructed from unsigned bytes branchbyte1 << 8 + branchbyte2)
+						commandLog += " " + (byteArrayPartToShort(input, absoluteIndex+1) + relativeIndex);
+						relativeIndex += 2;
+						break;
+					case 0xb1:
+						commandLog += "return"; //return void from method
+						break;
+					case 0xb2:
+						int getstaticArg = byteArrayRangeToInt(input, absoluteIndex+1, 2);
+						commandLog += "getstatic"; //get a static field value of a class, where the field is identified by field reference in the constant pool index (indexbyte1 << 8 + indexbyte2)
+						commandLog += "\t\t\t#" + getstaticArg;
+						commandLog += "\t\t//" + arrayOfConstants[arrayOfInts[arrayOfInts[getstaticArg]]];
+						commandLog += "." + arrayOfConstants[arrayOfInts[arrayOfIntsSecond[getstaticArg]]];
+						String typeOrSignature = arrayOfConstants[arrayOfIntsSecond[arrayOfIntsSecond[getstaticArg]]];
+						if (typeOrSignature.charAt(0) != '(') {
+							//it is a field, not a method
+							commandLog += ":";
+						}
+						commandLog += typeOrSignature;
+						relativeIndex += 2;
+						break;
+					case 0xb5:
+						commandLog += "putfield"; //set field to value in an object objectref, where the field is identified by a field reference index in constant pool (indexbyte1 << 8 + indexbyte2)
+						commandLog += "\t\t\t#" + byteArrayRangeToInt(input, absoluteIndex+1, 2);
+						relativeIndex += 2;
+						break;
+					case 0xb6:
+						int invokevirtualArg = byteArrayRangeToInt(input, absoluteIndex+1, 2);
+						commandLog += "invokevirtual"; // 	invoke virtual method on object objectref and puts the result on the stack (might be void); the method is identified by method reference index in constant pool (indexbyte1 << 8 + indexbyte2)
+						commandLog += " #" + invokevirtualArg;
+						commandLog += "\t\t//" + arrayOfConstants[arrayOfInts[arrayOfInts[invokevirtualArg]]];
+						commandLog += "." + arrayOfConstants[arrayOfInts[arrayOfIntsSecond[invokevirtualArg]]];
+						commandLog += arrayOfConstants[arrayOfIntsSecond[arrayOfIntsSecond[invokevirtualArg]]];
+						relativeIndex += 2;
+						break;
+					case 0xb7:
+						commandLog += "invokespecial"; //invoke instance method on object objectref and puts the result on the stack (might be void); the method is identified by method reference index in constant pool (indexbyte1 << 8 + indexbyte2)
+						commandLog += "\t" + byteArrayRangeToInt(input, absoluteIndex+1, 2);
+						relativeIndex += 2;
+						break;
+					default:
+						commandLog += "wtf?";
+						break;
+				}
+
+
+				message += "      " + commandLog +"\n";
+				relativeIndex++;
+			}
+			result.put("Succeded?", true);
+			result.put("Message", message);
+		}
+		else {
+			result.put("Succeded?", false);
+			result.put("ErrorText", "Not enough bytes for bytecode data");
+		}
+
+		return result;		
+	}
+
 	public static HackMap checkIndexReachedArrayLength(byte[] input, int currentIndex) {
 		HackMap result = new HackMap();
 
 		if (input.length == currentIndex) {
-			result.put("Succeded", true);
+			result.put("Succeded?", true);
 			result.put("Message", "Whole file parsing was completed");
 		}
 		else {
-			result.put("Succeded", false);
+			result.put("Succeded?", false);
 			result.put("ErrorText", "Parts of class file were not analyzed");
 		}
 
@@ -447,7 +569,7 @@ public class HackMap {
 
 
 	public static void evaluateResult(HackMap result, int exitCode) {
-		if (result.getBoolean("Succeded"))
+		if (result.getBoolean("Succeded?"))
 			println(result.getString("Message")+"\n");
 		else {
 			printlnError(result.getString("ErrorText"));
@@ -484,7 +606,7 @@ public class HackMap {
 			evaluateResult(versionNumberCheckResult, 3);
 
 
-			HackMap constantParseResult = parseConstants(data);
+			HackMap constantParseResult = parseConstantPoolData(data);
 
 			evaluateResult(constantParseResult, 4);
 
@@ -859,85 +981,9 @@ public class HackMap {
 						index += 4;
 
 						println("    No idea how to show bytecode now\n");
-						int tempIndex = 0;
-						while (tempIndex < lengthOfCode){
-							int byteCodeValue = signBitAsValue(data[index + tempIndex]);
-
-							String commandName = String.format("%03d", tempIndex) + ": " + String.format("%02x", byteCodeValue) + " ";
-
-							switch(byteCodeValue) {
-								case 0x03:
-									commandName += "iconst_0"; //load the int value 0 onto the stack
-									break;
-								case 0x04:
-									commandName += "iconst_1"; //load the int value 1 onto the stack
-									break;
-								case 0x10:
-									commandName += "bipush"; //push a byte onto the stack as an integer value
-									commandName += " " + data[index+tempIndex+1];
-									tempIndex ++;
-									break;
-								case 0x12:
-									commandName += "ldc"; //push a constant #index from a constant pool (String, int or float) onto the stack
-									commandName += " #" + data[index+tempIndex+1];
-									commandName += "\t\t\t\t//" + arrayOfConstants[arrayOfInts[data[index+tempIndex+1]]];
-									tempIndex ++;
-									break;
-								case 0x1b:
-									commandName += "iload_1"; //load an int value from local variable 1
-									break;
-								case 0x2a:
-									commandName += "aload_0"; //load a reference onto the stack from local variable 0
-									break;
-								case 0x3c:
-									commandName += "istore_1"; //store int value into variable 1
-									break;
-								case 0xa2:
-									commandName += "if_icmpge"; //if value1 is greater than or equal to value2, branch to instruction at branchoffset (signed short constructed from unsigned bytes branchbyte1 << 8 + branchbyte2)
-									commandName += " " + (byteArrayPartToShort(data, index+tempIndex+1) + tempIndex);
-									tempIndex += 2;
-									break;
-								case 0xb1:
-									commandName += "return"; //return void from method
-									break;
-								case 0xb2:
-									//current implementation works ONLY for fields
-									int getstaticArg = byteArrayRangeToInt(data, index+tempIndex+1, 2);
-									commandName += "getstatic"; //get a static field value of a class, where the field is identified by field reference in the constant pool index (indexbyte1 << 8 + indexbyte2)
-									commandName += " #" + getstaticArg;
-									commandName += "\t//" + arrayOfConstants[arrayOfInts[arrayOfInts[getstaticArg]]];
-									commandName += "." + arrayOfConstants[arrayOfInts[arrayOfIntsSecond[getstaticArg]]];
-									String typeOrSignature = arrayOfConstants[arrayOfIntsSecond[arrayOfIntsSecond[getstaticArg]]];
-									if (typeOrSignature.charAt(0) == '(') {
-										//nothing to add
-									}
-									else {
-										//field
-										commandName += ":";
-									}
-									commandName += typeOrSignature;
-									tempIndex += 2;
-									break;
-								case 0xb5:
-									commandName += "putfield"; //set field to value in an object objectref, where the field is identified by a field reference index in constant pool (indexbyte1 << 8 + indexbyte2)
-									commandName += " #" + byteArrayRangeToInt(data, index+tempIndex+1, 2);
-									tempIndex += 2;
-									break;
-								case 0xb7:
-									commandName += "invokespecial"; //invoke instance method on object objectref and puts the result on the stack (might be void); the method is identified by method reference index in constant pool (indexbyte1 << 8 + indexbyte2)
-									commandName += " " + byteArrayRangeToInt(data, index+tempIndex+1, 2);
-									tempIndex += 2;
-									break;
-								default:
-									commandName += "wtf?";
-									break;
-							}
-
-
-							println("    " + commandName +"\n");
-							tempIndex++;
-						} 
-
+						
+						HackMap bytecodeParseResult = parseBytecode(data, index, lengthOfCode, arrayOfInts, arrayOfIntsSecond, arrayOfConstants);
+						evaluateResult(bytecodeParseResult, 5);
 						index += lengthOfCode;
 
 						int lengthOfExceptionTable = byteArrayRangeToInt(data, index, 2);
