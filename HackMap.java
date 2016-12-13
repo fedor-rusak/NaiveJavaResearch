@@ -460,6 +460,15 @@ public class HackMap {
 					case 0x04:
 						commandLog += "iconst_1"; //load the int value 1 onto the stack
 						break;
+					case 0x05:
+						commandLog += "iconst_2"; //load the int value 2 onto the stack
+						break;
+					case 0x06:
+						commandLog += "iconst_3"; //load the int value 3 onto the stack
+						break;
+					case 0x0d:
+						commandLog += "fconst_2"; //push 2.0f on the stack
+						break;
 					case 0x10:
 						commandLog += "bipush"; //push a byte onto the stack as an integer value
 						commandLog += "\t\t\t\t" + input[absoluteIndex+1];
@@ -471,8 +480,17 @@ public class HackMap {
 						commandLog += "\t\t//" + arrayOfConstants[arrayOfInts[input[absoluteIndex+1]]];
 						relativeIndex ++;
 						break;
+					case 0x1a:
+						commandLog += "iload_0"; //load an int value from local variable 0
+						break;
 					case 0x1b:
 						commandLog += "iload_1"; //load an int value from local variable 1
+						break;
+					case 0x1c:
+						commandLog += "iload_2"; //load an int value from local variable 2
+						break;
+					case 0x23:
+						commandLog += "fload_1"; //load a float value from local variable 1
 						break;
 					case 0x2a:
 						commandLog += "aload_0"; //load a reference onto the stack from local variable 0
@@ -480,11 +498,32 @@ public class HackMap {
 					case 0x3c:
 						commandLog += "istore_1"; //store int value into variable 1
 						break;
+					case 0x3d:
+						commandLog += "istore_2"; //store int value into variable 2
+						break;
+					case 0x3e:
+						commandLog += "istore_3"; //store int value into variable 3
+						break;
+					case 0x45:
+						commandLog += "fstore_2"; //store a float value into local variable 2
+						break;
+					case 0x60:
+						commandLog += "iadd"; //sum two ints from stack and push result to stack
+						break;
+					case 0x62:
+						commandLog += "fadd"; //sum two floats from stack and push result to stack
+						break;
 					case 0x84:
 						commandLog += "iinc"; //increment local variable #index by signed byte const
 						commandLog += " " + signBitAsValue(input[absoluteIndex+1]);
 						commandLog += ", " + input[absoluteIndex+2];
 						relativeIndex += 2;
+						break;
+					case 0x86:
+						commandLog += "i2f"; //convert an int into a float
+						break;
+					case 0x8b:
+						commandLog += "f2i"; //convert a float to an int
 						break;
 					case 0xa2:
 						commandLog += "if_icmpge"; //if value1 is greater than or equal to value2, branch to instruction at branchoffset (signed short constructed from unsigned bytes branchbyte1 << 8 + branchbyte2)
@@ -495,6 +534,9 @@ public class HackMap {
 						commandLog += "goto"; //goes to another instruction at branchoffset (signed short constructed from unsigned bytes branchbyte1 << 8 + branchbyte2)
 						commandLog += " " + (byteArrayPartToShort(input, absoluteIndex+1) + relativeIndex);
 						relativeIndex += 2;
+						break;
+					case 0xac:
+						commandLog += "ireturn"; //return an integer from a method
 						break;
 					case 0xb1:
 						commandLog += "return"; //return void from method
@@ -529,6 +571,11 @@ public class HackMap {
 						break;
 					case 0xb7:
 						commandLog += "invokespecial"; //invoke instance method on object objectref and puts the result on the stack (might be void); the method is identified by method reference index in constant pool (indexbyte1 << 8 + indexbyte2)
+						commandLog += "\t" + byteArrayRangeToInt(input, absoluteIndex+1, 2);
+						relativeIndex += 2;
+						break;
+					case 0xb8:
+						commandLog += "invokestatic"; //invoke a static method and puts the result on the stack (might be void); the method is identified by method reference index in constant pool (indexbyte1 << 8 + indexbyte2)
 						commandLog += "\t" + byteArrayRangeToInt(input, absoluteIndex+1, 2);
 						relativeIndex += 2;
 						break;
