@@ -1,0 +1,2 @@
+javac NaiveInterpreter.java
+java NaiveInterpreter

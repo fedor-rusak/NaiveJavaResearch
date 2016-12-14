@@ -513,6 +513,9 @@ public class HackMap {
 					case 0x62:
 						commandLog += "fadd"; //sum two floats from stack and push result to stack
 						break;
+					case 0x68:
+						commandLog += "imul"; //multiply two integers
+						break;
 					case 0x84:
 						commandLog += "iinc"; //increment local variable #index by signed byte const
 						commandLog += " " + signBitAsValue(input[absoluteIndex+1]);
