@@ -1,4 +1,4 @@
-# OpenJDK 7 startup logic
+# OpenJDK 7 HotSpot startup logic
 
 I had less then good understanding of steps involved in startup of official HotSpot JVM.
 

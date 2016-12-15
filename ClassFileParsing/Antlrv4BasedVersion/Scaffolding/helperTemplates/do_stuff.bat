@@ -10,7 +10,7 @@ cd folderName
 
 REM This is how you can compile java files
 dir /s /B  *.java > sources.txt
-javac -sourcepath . -cp ..\antlr-4.5.3-complete.jar;folderName\tmp  -d tmp\folderName @sources.txt
+javac -sourcepath . -cp ..\antlr-4.5.3-complete.jar; -d tmp\folderName @sources.txt
 
 del sources.txt
 
