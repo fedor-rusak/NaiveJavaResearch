@@ -52,4 +52,4 @@ So these steps are involved in work of JVM:
  * [class loading](ClassLoading/README.md)
  * [class file parsing](ClassFileParsing/README.md)
  * [native function calling](NativeFunctionCalling/README.md)
- * [main method bytecode execution](Interpeter/README.md)
+ * [main method bytecode execution](BytecodeInterpeter/README.md)

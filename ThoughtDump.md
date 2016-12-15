@@ -4,7 +4,11 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
-# 15.12.2016 — Time to write better documentation
+## 15.12.2016 — Git ignores letter case...
+
+I just found out when tried to create link from one markdown file to another. That if you change case of letters in name of already tracked folder or file then... git does not give a damn about it!
+
+## 15.12.2016 — Time to write better documentation
 
 So today as I was planning to work a bit more on class file parser or read documentation about method and variable resolution during java bytecode execution. And I thought that maybe I should write something about my reasearch. So that later when I leave it for a while there will be a change for older-me to remember the details of this project.
 
