@@ -8,7 +8,7 @@ Messages are added in reversed order.
 
 So today I have finished part of parser that is responsible for constant pool. This structure that looks like serialized array but with one stupid twist. There are constants that should be considered to use TWO indices of array for their storage.
 
-Here is the official [link](https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4.5). When documentation has such words: *In retrospect, making 8-byte constants take two constant pool entries was a poor choice. * — you know that you see some mistakes of the past.
+Here is the official [link](https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4.5). When documentation has such words: *In retrospect, making 8-byte constants take two constant pool entries was a poor choice.* — you know that you see some mistakes of the past.
 
 ## 15.12.2016 — Git ignores letter case...
 
