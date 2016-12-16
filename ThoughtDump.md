@@ -4,6 +4,12 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 16.12.2016 — This specification is plain beautiful
+
+So today I have finished part of parser that is responsible for constant pool. This structure that looks like serialized array but with one stupid twist. There are constants that should be considered to use TWO indices of array for their storage.
+
+Here is the official [link](https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4.5). When documentation has such words: *In retrospect, making 8-byte constants take two constant pool entries was a poor choice. * — you know that you see some mistakes of the past.
+
 ## 15.12.2016 — Git ignores letter case...
 
 I just found out when tried to create link from one markdown file to another. That if you change case of letters in name of already tracked folder or file then... git does not give a damn about it!
