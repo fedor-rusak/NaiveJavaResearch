@@ -1,4 +1,4 @@
-parser grammar ClassFileParser; 
+parser grammar ClassFileParser;
 
 tokens { BYTE }
 
@@ -48,7 +48,19 @@ constantPoolStuff
   locals[int i = 1, int poolCount]:
   constantPoolCount
   {$poolCount = hexToInt($constantPoolCount.text);} 
-  ( {$i<$poolCount}? {println("  Constant index: " + $i);} constantElement {$i++;} )*;
+  (
+  	{$i<$poolCount}? 
+  		{println("  Constant index: " + $i);}
+  		constantElement
+  		{
+  			$i++;
+  			String tagByte = $constantElement.text.substring(0,2);
+  		 	if (tagByte.equals("05") || tagByte.equals("06"))
+  		 		// 8 byte constans are considered to use two indices... official specification
+  		 		// https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4.5
+  		 		$i++;
+  		 }
+  )*;
 
 
 constantPoolCount: twoBytes {println("Constant pool count: " + hexToInt($twoBytes.text));};
@@ -57,20 +69,25 @@ constantElement: BYTE constantContent[hexToInt($BYTE.text)];
 
 
 constantContent[int tag]:
-	{$tag == 1}? {println("    Type: Utf8");} utf8Data
-	| {$tag == 3}? {println("    Type: Integer");} integerData
-	| {$tag == 4}? {println("    Type: Float");} floatData
-	| {$tag == 7}? {println("    Type: Class");} classData
-	| {$tag == 8}? {println("    Type: String");} stringData
- 	| {$tag == 9}? {println("    Type: FieldRef");} fieldRefData
-	| {$tag == 10}? {println("    Type: MethodRef");} methodRefData
-	| {$tag == 11}? {println("    Type: InterfaceMethodRef");} interfaceMethodRefData
-	| {$tag == 12}? {println("    Type: NameAndType");} nameAndTypeData;
+	{$tag == 1}? {println("    Utf8");} utf8Data
+	| {$tag == 3}? {println("    Integer");} integerData
+	| {$tag == 4}? {println("    Float");} floatData
+	| {$tag == 5}? {println("    Long");} longData
+	| {$tag == 6}? {println("    Double");} doubleData
+	| {$tag == 7}? {println("    Class");} classData
+	| {$tag == 8}? {println("    String");} stringData
+ 	| {$tag == 9}? {println("    FieldRef");} fieldRefData
+	| {$tag == 10}? {println("    MethodRef");} methodRefData
+	| {$tag == 11}? {println("    InterfaceMethodRef");} interfaceMethodRefData
+	| {$tag == 12}? {println("    NameAndType");} nameAndTypeData
+	| {$tag == 15}? {println("    MethodHandle");} methodHandleData
+	| {$tag == 16}? {println("    MethodType");} methodTypeData
+	| {$tag == 18}? {println("    InvokeDynamic");} invokeDynamicData;
 
 
 utf8Data:
-	twoBytes {println("    Length: " + hexToInt($twoBytes.text));}
-	utf8Value[hexToInt($twoBytes.text)] {println("    Value: " + hexToString($utf8Value.text));};
+	twoBytesWithLog["Length"]
+	utf8Value[hexToInt($twoBytesWithLog.text)] {println("    Value: " + hexToString($utf8Value.text));};
 
 utf8Value[int length]: someBytes[$length];
 
@@ -78,9 +95,13 @@ integerData: fourBytes;
 
 floatData: fourBytes;
 
-classData: twoBytes {println("    Class index: " + hexToInt($twoBytes.text));};
+longData: fourBytes fourBytes;
 
-stringData: twoBytes {println("    String index: " + hexToInt($twoBytes.text));};
+doubleData: fourBytes fourBytes;
+
+classData: twoBytesWithLog["Class index"];
+
+stringData: twoBytesWithLog["String index"];
 
 fieldRefData: twoForTwo["Class", "Name and type index"];
 methodRefData: twoForTwo["Class", "Name and type index"];
@@ -88,9 +109,20 @@ interfaceMethodRefData: twoForTwo["Class", "Name and type index"];
 
 nameAndTypeData: twoForTwo["Name", "Descriptor"];
 
+methodHandleData:
+	BYTE {println("    Reference kind: " + hexToInt($BYTE.text));}
+	twoBytesWithLog["Reference index"];
+
+methodTypeData: twoBytesWithLog["Descriptor index"];
+
+invokeDynamicData: twoForTwo["Bootstrap attribute method", "Name and type"];
+
 twoForTwo[String first, String second]:
-	twoBytes {println("    "+$first+" index: " + hexToInt($twoBytes.text));}
-	twoBytes {println("    "+$second+" index: " + hexToInt($twoBytes.text));};
+	twoBytesWithLog[$first+" index"]
+	twoBytesWithLog[$second+" index"];
+
+twoBytesWithLog[String logMessage]:
+	twoBytes {println("    "+ $logMessage + ": " + hexToInt($twoBytes.text));};
 
 
 twoBytes: BYTE BYTE;
