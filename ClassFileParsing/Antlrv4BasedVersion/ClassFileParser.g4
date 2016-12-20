@@ -26,19 +26,23 @@ tokens { BYTE }
 
 
 startPoint
-	locals[String[] utf8ConstantArray]:
-	{println("Class file start");}
+	locals[String[] utf8ConstantArray, int[] classArray]:
 	magic
 	minorVersion
 	majorVersion
-	constantPoolStorage {$utf8ConstantArray = $constantPoolStorage.utf8ConstantArray;}
+	constantPoolStorage
+	{
+		$utf8ConstantArray = $constantPoolStorage.utf8ConstantArray;
+		$classArray = $constantPoolStorage.classArray;
+	}
 	accessFlags
 	thisClass
 	superClass
-	interfaceStuff
+	interfaceStorage[$utf8ConstantArray, $classArray]
 	fieldStorage[$utf8ConstantArray]
-	BYTE*
-	{println("Class file end");};
+	methodStorage[$utf8ConstantArray]
+	attributeStorage[$utf8ConstantArray]
+	EOF;
 
 
 magic:
@@ -51,10 +55,14 @@ minorVersion: twoBytes {println("Minor version: " + hexToInt($twoBytes.text));};
 majorVersion: twoBytes {println("Major version: " + hexToInt($twoBytes.text));};
 
 constantPoolStorage
-	returns [String[] utf8ConstantArray]
+	returns [String[] utf8ConstantArray, int[] classArray]
 	locals[int i = 1, int poolCount]:
 	twoBytesWithLog["Constant pool count"]
-	{$poolCount = hexToInt($twoBytesWithLog.text); $utf8ConstantArray = new String[$poolCount];} 
+	{
+		$poolCount = hexToInt($twoBytesWithLog.text);
+		$utf8ConstantArray = new String[$poolCount];
+		$classArray = new int[$poolCount];
+	}
 	(
 		{$i<$poolCount}? 
 			{println("  Constant index: " + $i);}
@@ -66,12 +74,16 @@ constantPoolStorage
 					String utf8ValueHex = $constantElement.ctx.utf8Data().utf8Value().getText();
 					$utf8ConstantArray[$i] = hexToString(utf8ValueHex);
 				}
-			 	else if ("05".equals(tagByte) || "06".equals(tagByte))
-			 		// 8 byte constants are considered to use two indices... official specification
-			 		// https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4.5
-			 		$i++;
+				else if ("07".equals(tagByte)) {
+					String classIndexHex = $constantElement.ctx.classData().twoBytesWithLog().getText();
+					$classArray[$i] = hexToInt(classIndexHex);
+				}
+				else if ("05".equals(tagByte) || "06".equals(tagByte))
+					// 8 byte constants are considered to use two indices... official specification
+					// https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4.5
+					$i++;
 
-			 	$i++;
+				$i++;
 			}
 	)*;
 
@@ -100,7 +112,8 @@ constantElement
 
 utf8Data:
 	twoBytesWithLog["    Length"]
-	utf8Value[hexToInt($twoBytesWithLog.text)] {println("    Value: " + hexToString($utf8Value.text));};
+	utf8Value[hexToInt($twoBytesWithLog.text)]
+	{println("    Value: " + hexToString($utf8Value.text));};
 
 utf8Value[int length]: someBytes[$length];
 
@@ -123,7 +136,8 @@ interfaceMethodRefData: twoForTwo["    Class", "    Name and type"];
 nameAndTypeData: twoForTwo["    Name", "    Descriptor"];
 
 methodHandleData:
-	BYTE {println("    Reference kind: " + hexToInt($BYTE.text));}
+	BYTE
+	{println("    Reference kind: " + hexToInt($BYTE.text));}
 	twoBytesWithLog["Reference index"];
 
 methodTypeData: twoBytesWithLog["    Descriptor index"];
@@ -133,8 +147,6 @@ invokeDynamicData: twoForTwo["    Bootstrap attribute method", "    Name and typ
 twoForTwo[String first, String second]:
 	twoBytesWithLog[$first+" index"]
 	twoBytesWithLog[$second+" index"];
-
-
 
 
 accessFlags:
@@ -149,15 +161,19 @@ superClass:
 	twoBytesWithLog["Super class index"];
 
 
-interfaceStuff
-	locals[int i = 0, int interfaceCount]:
+interfaceStorage[String[] utf8ConstantArray, int[] classArray]
+	locals[int i = 0, int interfaceCount, int index]:
 	twoBytesWithLog["Interface count"]
 	{$interfaceCount = hexToInt($twoBytesWithLog.text);} 
 	(
 		{$i<$interfaceCount}? 
-
-			twoBytesWithLog["  Interface index"]
-
+			twoBytes
+			{
+				println("  Interface index: " + $i);
+				$index = hexToInt($twoBytes.text);
+				println("    Class index: " + $index);
+				println("    Class: " + $utf8ConstantArray[$classArray[$index]]);
+			}
 			{$i++;}
 	)*;
 
@@ -174,7 +190,8 @@ fieldStorage[String[] utf8ConstantArray]
 	)*;
 
 fieldElement[String[] utf8ConstantArray]:
-	twoBytes {println("    Access flags: 0x" + $twoBytes.text);}
+	twoBytes
+	{println("    Access flags: 0x" + $twoBytes.text);}
 	twoBytesWithLog["    Name index"]
 	{println("    Name: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);}
 	twoBytesWithLog["    Descriptor index"]
@@ -188,19 +205,17 @@ fieldAttributeStorage[String[] utf8ConstantArray]
 	(
 		{$i<$fieldAttributeCount}? 
 			{println("      Attribute index: " + $i);}
-
 			fieldAttribute[$utf8ConstantArray]
-
 			{$i++;}
 	)*;
 
 
 fieldAttribute[String[] utf8ConstantArray]
 	locals[String attributeName]:
-	twoBytesWithLog["        Attribute name index"]
+	twoBytesWithLog["        Name index"]
 	{
 		$attributeName = $utf8ConstantArray[hexToInt($twoBytesWithLog.text)];
-		println("        Attribute name: " + $attributeName);
+		println("        Name: " + $attributeName);
 	}
 	(
 		{"ConstantValue".equals($attributeName)}? constantValueData
@@ -213,22 +228,22 @@ fieldAttribute[String[] utf8ConstantArray]
 
 
 constantValueData:
-	fourBytesWithLog["        Attribute length"]
+	fourBytesWithLog["        Length"]
 	twoBytesWithLog["        Constant value"];
 
 syntheticData:
-	fourBytesWithLog["        Attribute length"];
+	fourBytesWithLog["        Length"];
 
 signatureData:
-	fourBytesWithLog["        Attribute length"]
+	fourBytesWithLog["        Length"]
 	twoBytesWithLog["        Signature value"];
 
 deprecatedData:
-	fourBytesWithLog["        Attribute length"];
+	fourBytesWithLog["        Length"];
 
 fieldAnnotationsStorage[String[] utf8ConstantArray]
 	locals[int i = 0, int annotationCount]:
-	fourBytesWithLog["        Attribute length"]
+	fourBytesWithLog["        Length"]
 	twoBytesWithLog["        Annotation count"]
 	{$annotationCount = hexToInt($twoBytesWithLog.text);} 
 	(
@@ -240,18 +255,234 @@ fieldAnnotationsStorage[String[] utf8ConstantArray]
 
 fieldAnnotation[String[] utf8ConstantArray]
 	locals[int i, int elementValuePairCount]:
-	twoBytesWithLog["          Type index"]
-	{println("          Type: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);}
-	twoBytesWithLog["          Number of element-value pairs"]
+	twoBytesWithLog["            Type index"]
+	{println("            Type: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);}
+	twoBytesWithLog["            Element-value pairs count"]
 	{$elementValuePairCount = hexToInt($twoBytesWithLog.text);} 
 	(
 		{$i<$elementValuePairCount}? 
-			{println("            Element-value pair index: " + $i);}
+			{println("              Element-value pair index: " + $i);}
 			{if ($elementValuePairCount > 0) throw new RuntimeException("Not implemented!");}
 			twoBytesWithLog["              Index"]
 			{$i++;}
 	)*;
 
+
+methodStorage[String[] utf8ConstantArray]
+	locals[int i, int methodCount]:
+	twoBytesWithLog["Method count"]
+	{$methodCount = hexToInt($twoBytesWithLog.text);} 
+	(
+		{$i<$methodCount}? 
+			{println("  Method index: " + $i);}
+			methodElement[$utf8ConstantArray]
+			{$i++;}
+	)*;
+
+
+methodElement[String[] utf8ConstantArray]:
+	twoBytes
+	{println("    Access flags: 0x" + $twoBytes.text);}
+	twoBytesWithLog["    Name index"]
+	{println("    Name: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);}
+	twoBytesWithLog["    Descriptor index"]
+	{println("    Descriptor: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);}
+	methodAttributeStorage[$utf8ConstantArray];
+
+
+methodAttributeStorage[String[] utf8ConstantArray]
+	locals[int i = 0, int fieldAttributeCount, String attributeName]:
+	twoBytesWithLog["    Attribute count"]
+	{$fieldAttributeCount = hexToInt($twoBytesWithLog.text);} 
+	(
+		{$i<$fieldAttributeCount}? 
+			{println("      Attribute index: " + $i);}
+			methodAttribute[$utf8ConstantArray]
+			{$i++;}
+	)*;
+
+methodAttribute[String[] utf8ConstantArray]
+	locals[String attributeName]:
+	twoBytesWithLog["        Name index"]
+	{
+		$attributeName = $utf8ConstantArray[hexToInt($twoBytesWithLog.text)];
+		println("        Name: " + $attributeName);
+	}
+	(
+		{"Code".equals($attributeName)}? codeData[$utf8ConstantArray]
+		| {"Synthetic".equals($attributeName)}? syntheticData
+		| {"Signature".equals($attributeName)}? signatureData
+		| {"Deprecated".equals($attributeName)}? deprecatedData
+		| {"RuntimeVisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
+		| {"RuntimeInvisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
+	);
+
+codeData[String[] utf8ConstantArray]
+	locals[int codeLength]:
+	fourBytesWithLog["        Length"]
+	twoBytesWithLog["        Maximum stack size"]
+	twoBytesWithLog["        Maximum local variable count"]
+	fourBytesWithLog["        Code length"]
+	{$codeLength = hexToInt($fourBytesWithLog.text);}
+	someBytes[$codeLength]
+	exceptionStorage
+	codeAttributeStorage[$utf8ConstantArray]
+	;
+
+exceptionStorage
+	locals[int i, int exceptionCount]:
+	twoBytesWithLog["        Exception table length"]
+	{$exceptionCount = hexToInt($twoBytesWithLog.text);} 
+	(
+		{$i<$exceptionCount}? 
+			{println("          Exception index: " + $i);}
+			twoBytes
+			twoBytes
+			twoBytes
+			twoBytes
+			{$i++;}
+	)*;
+
+
+codeAttributeStorage[String[] utf8ConstantArray]
+	locals[int i, int attributeCount]:
+	twoBytesWithLog["        Attribute count"]
+	{$attributeCount = hexToInt($twoBytesWithLog.text);} 
+	(
+		{$i<$attributeCount}? 
+			{println("          Attribute index: " + $i);}
+			codeAttribute[$utf8ConstantArray]
+			{$i++;}
+	)*;
+
+
+codeAttribute[String[] utf8ConstantArray]
+	locals[String attributeName]:
+	twoBytesWithLog["            Name index"]
+	{
+		$attributeName = $utf8ConstantArray[hexToInt($twoBytesWithLog.text)];
+		println("            Name: " + $attributeName);
+	}
+	(
+		{"LineNumberTable".equals($attributeName)}? lineNumberTableData
+		| {"LocalVariableTable".equals($attributeName)}? notImplementedData
+		| {"LocalVariableTypeTable".equals($attributeName)}? notImplementedData
+		| {"StackMapTable".equals($attributeName)}? stackMapTableData
+	);
+
+
+lineNumberTableData:
+	fourBytesWithLog["            Length"]
+	lineNumberStorage;
+
+lineNumberStorage
+	locals[int i, int lineNumberCount]:
+	twoBytesWithLog["              Line number count"]
+	{$lineNumberCount = hexToInt($twoBytesWithLog.text);} 
+	(
+		{$i<$lineNumberCount}? 
+			{println("                Line number index: " + $i);}
+			fourBytes
+			{$i++;}
+	)*;
+
+notImplementedData:
+	twoBytes
+	{if ($twoBytes.text != null) throw new RuntimeException("Not implemented!");};
+
+stackMapTableData:
+	fourBytesWithLog["            Length"]
+	stackMapEntryStorage;
+
+stackMapEntryStorage
+	locals[int i, int entryCount]:
+	twoBytesWithLog["            Entry count"]
+	{$entryCount = hexToInt($twoBytesWithLog.text);} 
+	(
+		{$i<$entryCount}? 
+			{println("              Entry index: " + $i);}
+			stackMapEntry
+			{$i++;}
+	)*;
+
+stackMapEntry
+	locals[int frameType, String prefix = "                Type"]:
+	BYTE
+	{
+		$frameType = hexToInt($BYTE.text);
+		println($prefix+" number: "+$frameType);
+	}
+	{if ($frameType >= 0 && $frameType <= 63) println("                Type: SAME");}
+	(
+		{$frameType >= 64 && $frameType <= 127}? {println($prefix+": SAME_LOCALS_1_STACK_ITEM");} twoBytes
+		| {$frameType == 247}? {println($prefix+": SAME_LOCALS_1_STACK_ITEM_EXTENDED");} twoBytes
+		| {$frameType >= 248 && $frameType <= 250}? {println($prefix+": CHOP");} frameChopData
+		| {$frameType == 251}? {println($prefix+": SAME_FRAME_EXTENDED");} twoBytes
+		| {$frameType >= 252 && $frameType <= 254}? {println($prefix+": APPEND");} frameAppendData[$frameType-251]
+		| {$frameType >= 255}? {println($prefix+": FULL_FRAME");} twoBytes
+	);
+
+frameChopData:
+	twoBytesWithLog["                Offset delta"];
+
+frameAppendData[int typeInfoCount]
+	locals[int i]:
+	twoBytes
+	{println("                Type info count: " + $typeInfoCount);}
+	(
+		{$i<$typeInfoCount}? 
+			{println("                  Index: " + $i);}
+			typeInfo
+			{$i++;}
+	)*;
+
+
+typeInfo
+	locals[int typeInfoTag]:
+	BYTE
+	{
+		$typeInfoTag = hexToInt($BYTE.text);
+		println("                    Type info tag: " + $typeInfoTag);
+	}
+	({$typeInfoTag == 7 || $typeInfoTag == 8}? twoBytes)*;
+
+
+attributeStorage[String[] utf8ConstantArray]
+	locals[int i, int attributeCount]:
+	twoBytesWithLog["Attribute count"]
+	{
+		$attributeCount = hexToInt($twoBytesWithLog.text);
+	} 
+	(
+		{$i<$attributeCount}? 
+			{println("  Attribute index: " + $i);}
+			attributeElement[$utf8ConstantArray]
+			{$i++;}
+	)*;
+
+
+attributeElement[String[] utf8ConstantArray]
+	locals[String attributeName]:
+	twoBytesWithLog["    Name index"]
+	{
+		$attributeName = $utf8ConstantArray[hexToInt($twoBytesWithLog.text)];
+		println("    Name: " + $attributeName);
+	}
+	(
+		{"Synthetic".equals($attributeName)}? syntheticData
+		| {"Signature".equals($attributeName)}? signatureData
+		| {"SourceFile".equals($attributeName)}? sourceFileData[$utf8ConstantArray]
+		| {"Deprecated".equals($attributeName)}? deprecatedData
+		| {"RuntimeVisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
+		| {"RuntimeInvisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
+	);
+
+sourceFileData[String[] utf8ConstantArray]
+	locals [int sourceFileIndex]:
+	fourBytesWithLog["    Length"]
+	twoBytesWithLog["    Source file index"]
+	{$sourceFileIndex = hexToInt($twoBytesWithLog.text);}
+	{println("    Source file: " + $utf8ConstantArray[$sourceFileIndex]);};
 
 twoBytesWithLog[String logMessage]:
 	twoBytes {println($logMessage + ": " + hexToInt($twoBytes.text));};
