@@ -12,7 +12,7 @@ I assume that semantic predicates are responsible for some slow down plus I use 
 
 So I tried to use jVisualVM for profiling. And I while it is obvious that some ATN stuff takes too long I also can see some class with names of parser rules and id toes not make to much sense. Except the fact that the more rules you add the slower parsing gets.
 
-After some non-intuitive research I have found that there is some prediction mode involved in parsing process. And for some weird reason using the one called SLL results in like 100x speed increase! These are tricks that are mentiod in ANTLR4 book yet not described in official documentation as I see it now...
+After some non-intuitive research I have found that there is some prediction mode involved in parsing process. And for some weird reason using the one called SLL results in like 100x speed increase! And to my shame this was the last paragraph of official FAQ that I have skimped in search for useful information. Great documentation!
 
 ## 22.12.2016 — So when you want to work with parse tree
 
