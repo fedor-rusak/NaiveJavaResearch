@@ -401,11 +401,11 @@ stackMapEntryStorage
 	(
 		{$i<$entryCount}? 
 			{println("              Entry index: " + $i);}
-			stackMapEntry
+			stackMapEntryElement
 			{$i++;}
 	)*;
 
-stackMapEntry
+stackMapEntryElement
 	locals[int frameType, String prefix = "                Type"]:
 	BYTE
 	{
@@ -469,13 +469,48 @@ attributeElement[String[] utf8ConstantArray]
 		println("    Name: " + $attributeName);
 	}
 	(
-		{"Synthetic".equals($attributeName)}? syntheticData
+		{"InnerClasses".equals($attributeName)}? innerClassesData[$utf8ConstantArray]
+		| {"EnclosingMethod".equals($attributeName)}? enclosingMethodData[$utf8ConstantArray]
+		| {"Synthetic".equals($attributeName)}? syntheticData
 		| {"Signature".equals($attributeName)}? signatureData
 		| {"SourceFile".equals($attributeName)}? sourceFileData[$utf8ConstantArray]
 		| {"Deprecated".equals($attributeName)}? deprecatedData
 		| {"RuntimeVisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 		| {"RuntimeInvisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 	);
+
+
+innerClassesData[String[] utf8ConstantArray]
+	locals [int sourceFileIndex]:
+	fourBytesWithLog["    Length"]
+	innerClassesStorage[$utf8ConstantArray];
+
+innerClassesStorage[String[] utf8ConstantArray]
+	locals[int i, int innerClassCount]:
+	twoBytesWithLog["    Inner class count"]
+	{
+		$innerClassCount = hexToInt($twoBytesWithLog.text);
+	} 
+	(
+		{$i<$innerClassCount}? 
+			{println("      Index: " + $i);}
+			innerClassElement[$utf8ConstantArray]
+			{$i++;}
+	)*;
+
+innerClassElement[String[] utf8ConstantArray]:
+	twoBytesWithLog["        Inner class info index"]
+	twoBytesWithLog["        Outer class info index"]
+	twoBytesWithLog["        Inner name index"]
+	twoBytes
+	{println("        Access flags: 0x" + $twoBytes.text);};
+
+
+enclosingMethodData[String[] utf8ConstantArray]:
+	fourBytesWithLog["    Length"]
+	twoBytesWithLog["    Class index"]
+	twoBytesWithLog["    Method index"];
+
 
 sourceFileData[String[] utf8ConstantArray]
 	locals [int sourceFileIndex]:

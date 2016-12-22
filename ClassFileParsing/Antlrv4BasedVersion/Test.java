@@ -1,15 +1,19 @@
 import org.antlr.v4.runtime.CommonTokenStream; 
-import org.antlr.v4.runtime.ANTLRInputStream; 
 import org.antlr.v4.runtime.ANTLRFileStream; 
 import org.antlr.v4.runtime.CharStream; 
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.WritableToken;
 
 import org.antlr.v4.runtime.TokenSource;
 import org.antlr.v4.runtime.TokenFactory;
 import org.antlr.v4.runtime.CommonTokenFactory;
 import org.antlr.v4.runtime.misc.Pair;
+
+import org.antlr.v4.runtime.tree.xpath.XPath;
+import org.antlr.v4.runtime.RuleContext;
+import org.antlr.v4.runtime.tree.ParseTree;
+
+import org.antlr.v4.runtime.atn.PredictionMode;
 
 public class Test {
 
@@ -83,16 +87,30 @@ public class Test {
 		public TokenFactory<?> getTokenFactory() {return null;}
 	}
 
-	public static void main(String[] args) throws Exception { 
+	public static void main(String[] args) throws Exception {
 		if (args.length == 0) System.exit(1);
+
+		long start = System.currentTimeMillis();
 
 		CharStream input = new BinaryANTLRFileStream(args[0]);
 
 		CommonTokenStream tokens = new CommonTokenStream(new MyTokenSource(input)); 
 
 		ClassFileParser parser = new ClassFileParser(tokens);
+		//magic settings for performance
+		parser.setErrorHandler(new org.antlr.v4.runtime.BailErrorStrategy());
+		parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
 
-		parser.startPoint();
+		ClassFileParser.StartPointContext rootElementContext = parser.startPoint();
+
+		System.out.println("Parsing time: " + (System.currentTimeMillis() - start)/1000.0 + " second(s)");
+
+		System.out.println("Constants:");
+		for (ParseTree t : XPath.findAll(rootElementContext, "/startPoint/constantPoolStorage/constantElement", parser)) {
+			RuleContext r = (RuleContext) t;
+			r = (RuleContext) r.getChild(1);
+			System.out.println("  "+ClassFileParser.ruleNames[r.getRuleIndex()]+": " + r.getText());
+		}
 	}
 
-} 
+}
