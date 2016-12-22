@@ -4,6 +4,12 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 22.12.2016 — Deprecated handling is deprecated?!
+
+Nothing really interesting here but small back-compatibility thing. Deprecated annotation was introduced in java before the concept of annotations. And that is why on level of class file it is ok that method has *attribute* "Deprecated". But in newer version compiler generates attribute called *RuntimeVisibleAnnotations* and "Deprecated" is treated just like another annotation.
+
+Technically speaking it means that newer version of JVM should run old java bytecode without problems. Even without recompiling. For the price of keeping complexity in specification and implementation. Business value of stability over technical sense of keeping things simple. Sigh...
+
 ## 22.12.2016 — ANTLRv4 is slow (for me) [fixed!!!]
 
 It is not horribly slow like hours or days of work time. But for my simple grammar with about 60 rules parsing of 660 bytes class file takes about 13 seconds. Of course I may have a slow computer or ram but it seems ok for everything else on my computer like IntellijIdea or Firefox Browser.

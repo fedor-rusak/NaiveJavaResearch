@@ -221,7 +221,7 @@ fieldAttribute[String[] utf8ConstantArray]
 		{"ConstantValue".equals($attributeName)}? constantValueData
 		| {"Synthetic".equals($attributeName)}? syntheticData
 		| {"Signature".equals($attributeName)}? signatureData
-		| {"Deprecated".equals($attributeName)}? deprecatedData
+		| {"Deprecated".equals($attributeName)}? deprecatedData["        "]
 		| {"RuntimeVisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 		| {"RuntimeInvisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 	);
@@ -238,8 +238,8 @@ signatureData:
 	fourBytesWithLog["        Length"]
 	twoBytesWithLog["        Signature value"];
 
-deprecatedData:
-	fourBytesWithLog["        Length"];
+deprecatedData[String prefix]:
+	fourBytesWithLog[prefix+"Length"];
 
 fieldAnnotationsStorage[String[] utf8ConstantArray]
 	locals[int i = 0, int annotationCount]:
@@ -312,7 +312,7 @@ methodAttribute[String[] utf8ConstantArray]
 		{"Code".equals($attributeName)}? codeData[$utf8ConstantArray]
 		| {"Synthetic".equals($attributeName)}? syntheticData
 		| {"Signature".equals($attributeName)}? signatureData
-		| {"Deprecated".equals($attributeName)}? deprecatedData
+		| {"Deprecated".equals($attributeName)}? deprecatedData["        "]
 		| {"RuntimeVisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 		| {"RuntimeInvisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 	);
@@ -474,7 +474,7 @@ attributeElement[String[] utf8ConstantArray]
 		| {"Synthetic".equals($attributeName)}? syntheticData
 		| {"Signature".equals($attributeName)}? signatureData
 		| {"SourceFile".equals($attributeName)}? sourceFileData[$utf8ConstantArray]
-		| {"Deprecated".equals($attributeName)}? deprecatedData
+		| {"Deprecated".equals($attributeName)}? deprecatedData["    "]
 		| {"RuntimeVisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 		| {"RuntimeInvisibleAnnotations".equals($attributeName)}? fieldAnnotationsStorage[$utf8ConstantArray]
 	);
