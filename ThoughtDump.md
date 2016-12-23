@@ -4,6 +4,16 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 23.12.2016 — So I refactored a bit and WTF with default package
+
+I just had implemented some pieces of glue code and some more lines and got the point when keeping everything in one class was hard to read and understand. So I changed a bit my build scripts and folder structure and now everything is smaller in lines yet bigger in quantity. And of course more import statements.
+
+Still I want to point out that it makes no sense that I can't reference class from default package when writing class with certain package declaration. Maybe it helps with something like security or optimization or hell knows what.
+
+And my second thought it that maybe it gives more predictability with loading dependencies but NO. If you reference default class what is difference from packaged class? On the level of bytecode it is just a constant showing path to class. And I am sure bytecode can be tweaked and JVM would handle it properly.
+
+After some research I came to conclusion that it was designed in such manner to minimize problems with name clashing when integrating multiple libraries. If you have to add package name to a class name chance of finding two classes with same details is lower than if you had to specify only name. Ok, some sort of best practice injected in language specification.
+
 ## 22.12.2016 — Deprecated handling is deprecated?!
 
 Nothing really interesting here but small back-compatibility thing. Deprecated annotation was introduced in java before the concept of annotations. And that is why on level of class file it is ok that method has *attribute* "Deprecated". But in newer version compiler generates attribute called *RuntimeVisibleAnnotations* and "Deprecated" is treated just like another annotation.

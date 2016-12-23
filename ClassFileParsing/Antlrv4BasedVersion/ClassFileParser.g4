@@ -2,6 +2,10 @@ parser grammar ClassFileParser;
 
 tokens { BYTE }
 
+@header {
+package ru.fedor_rusak.microjvm.antlr_class_file_parsing;
+}
+
 @members {
 	static void println(Object object) {
 		System.out.println(object);

@@ -1,26 +1,27 @@
+package ru.fedor_rusak.microjvm.antlr_class_file_parsing;
+
+
 import org.antlr.v4.runtime.CommonTokenStream; 
-import org.antlr.v4.runtime.ANTLRFileStream; 
+import org.antlr.v4.runtime.ANTLRFileStream;
+import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CharStream; 
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.Token;
+
+import org.antlr.v4.runtime.atn.PredictionMode;
 
 import org.antlr.v4.runtime.TokenSource;
 import org.antlr.v4.runtime.TokenFactory;
 import org.antlr.v4.runtime.CommonTokenFactory;
 import org.antlr.v4.runtime.misc.Pair;
 
-import org.antlr.v4.runtime.tree.xpath.XPath;
-import org.antlr.v4.runtime.RuleContext;
-import org.antlr.v4.runtime.tree.ParseTree;
 
-import org.antlr.v4.runtime.atn.PredictionMode;
+public class ParserHelper {
 
-public class Test {
+	static class BinaryANTLRInputStream extends ANTLRInputStream {
 
-	static class BinaryANTLRFileStream extends ANTLRFileStream {
-
-		public BinaryANTLRFileStream(String fileName) throws java.io.IOException {
-			super(fileName, "ISO-8859-1");
+		public BinaryANTLRInputStream(char[] data, int numberOfActualCharsInArray) {
+			super(data, numberOfActualCharsInArray);
 		}
 
 		/** Print the decimal value rather than treat as char */
@@ -87,12 +88,8 @@ public class Test {
 		public TokenFactory<?> getTokenFactory() {return null;}
 	}
 
-	public static void main(String[] args) throws Exception {
-		if (args.length == 0) System.exit(1);
-
-		long start = System.currentTimeMillis();
-
-		CharStream input = new BinaryANTLRFileStream(args[0]);
+	public static ClassFileParser getParser(char[] fileData) throws Exception {
+		CharStream input = new BinaryANTLRInputStream(fileData, fileData.length);
 
 		CommonTokenStream tokens = new CommonTokenStream(new MyTokenSource(input)); 
 
@@ -101,16 +98,11 @@ public class Test {
 		parser.setErrorHandler(new org.antlr.v4.runtime.BailErrorStrategy());
 		parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
 
-		ClassFileParser.StartPointContext rootElementContext = parser.startPoint();
+		return parser;
+	}
 
-		System.out.println("Parsing time: " + (System.currentTimeMillis() - start)/1000.0 + " second(s)");
-
-		System.out.println("Constants:");
-		for (ParseTree t : XPath.findAll(rootElementContext, "/startPoint/constantPoolStorage/constantElement", parser)) {
-			RuleContext r = (RuleContext) t;
-			r = (RuleContext) r.getChild(1);
-			System.out.println("  "+ClassFileParser.ruleNames[r.getRuleIndex()]+": " + r.getText());
-		}
+	public static char[] getFileDataISOEncoding(String file) throws java.io.IOException {
+		return org.antlr.v4.runtime.misc.Utils.readFile(file, "ISO-8859-1");
 	}
 
 }
