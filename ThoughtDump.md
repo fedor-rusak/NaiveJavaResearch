@@ -4,6 +4,12 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 23.12.2016 — See the invisible
+
+So it was not that hard to get the attribute called RuntimeInvisibleAnnotations. I just added a local annotation into java class and after compilcation it appeared. What a strange way to make this annotation unaccessible through Reflection API.
+
+As simple searching describes by default annotations are not visible in runtime yet the data about them is kept in class file structure. It is called Retention and its and additional Annotation that should be marked on your (Inception!) annotation in order for it to be visible at Runtime. Oh boy that is weird.
+
 ## 23.12.2016 — So I refactored a bit and WTF with default package
 
 I just had implemented some pieces of glue code and some more lines and got the point when keeping everything in one class was hard to read and understand. So I changed a bit my build scripts and folder structure and now everything is smaller in lines yet bigger in quantity. And of course more import statements.

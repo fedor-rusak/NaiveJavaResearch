@@ -1,4 +1,8 @@
-@Deprecated
+@interface Copyright {
+	String value();
+}
+
+@Copyright("Santa Claus")
 public class TestData implements java.io.Serializable {
 
 	@Deprecated

@@ -266,11 +266,23 @@ fieldAnnotation[String[] utf8ConstantArray]
 	(
 		{$i<$elementValuePairCount}? 
 			{println("              Element-value pair index: " + $i);}
-			{if ($elementValuePairCount > 0) throw new RuntimeException("Not implemented!");}
-			twoBytesWithLog["              Index"]
+			elementValuePair[$utf8ConstantArray]
 			{$i++;}
 	)*;
 
+elementValuePair[String[] utf8ConstantArray]
+	locals[String tag]:
+	twoBytesWithLog["                Name index"]
+	{println("                Name: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);}
+	BYTE
+	{$tag = hexToString($BYTE.text);}
+	(
+		{"s".equals($tag)}? stringElementValuePairData[$utf8ConstantArray]
+	);
+
+stringElementValuePairData[String[] utf8ConstantArray]:
+	twoBytesWithLog["                Constant value index"]
+	{println("                Constant value: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);};
 
 methodStorage[String[] utf8ConstantArray]
 	locals[int i, int methodCount]:
