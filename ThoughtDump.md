@@ -4,7 +4,15 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
-## 26.12.2016 — Antlr no cyclic references
+## 26.12.2016 — What the hell is invokedynamic
+
+Last piece of class file parsing with bootstrap methods point to a strange invokedynamic bytecode that somehow allows some flexibility with dispatching method calls. Quick search on iternet shows that it was supposed to make implementing dynamic languages for JVM easier.
+
+Yet it is not supported by official java compiler and most of the articles use the simplest examples without providing any useful knowledge for diving into this domain. Some github tickets even show that this feature was slowing down JRuby in Java 8.
+
+So if I have no other choice but to edit bytecode by hand. Then I will facilitate this process a bit and first step was just adding space to a huge string representing hex values from simple helllo-world class file. Libraries like ASM should be ok for this but they *hide* to much.
+
+## 26.12.2016 — Antlr4 allows no cyclic references
 
 Yeah I get it. This tool is great for fast and dirty prototyping. It gives some feedback and is based on some woodoo ATN bullshit. And there is even some hack to allow sort of recursive rules to be used for parser generation.
 
