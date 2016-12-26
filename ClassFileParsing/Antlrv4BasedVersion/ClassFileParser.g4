@@ -276,13 +276,36 @@ elementValuePair[String[] utf8ConstantArray]
 	{println("                Name: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);}
 	BYTE
 	{$tag = hexToString($BYTE.text);}
+	{println("                Tag: " + $tag);}
 	(
-		{"s".equals($tag)}? stringElementValuePairData[$utf8ConstantArray]
+		{"s".equals($tag)}? stringElementValueData[$utf8ConstantArray]
+		|  {"[".equals($tag)}? arrayElementValueData[$utf8ConstantArray]
 	);
 
-stringElementValuePairData[String[] utf8ConstantArray]:
+stringElementValueData[String[] utf8ConstantArray]:
 	twoBytesWithLog["                Constant value index"]
 	{println("                Constant value: " + $utf8ConstantArray[hexToInt($twoBytesWithLog.text)]);};
+
+arrayElementValueData[String[] utf8ConstantArray]
+	locals[int i, int elementValuePairCount]:
+	twoBytesWithLog["                Array element count"]
+	{$elementValuePairCount = hexToInt($twoBytesWithLog.text);}
+	(
+		{$i<$elementValuePairCount}? 
+			{println("              Element-value pair index: " + $i);}
+			//http://docs.oracle.com/javase/specs/jls/se8/html/jls-9.html#jls-9.6.1
+			inArrayValuePair[$utf8ConstantArray]
+			{$i++;}
+	)*;
+
+inArrayValuePair[String[] utf8ConstantArray]
+	locals[String tag]:
+	BYTE
+	{$tag = hexToString($BYTE.text);}
+	{println("                Tag: " + $tag);}
+	(
+		{"s".equals($tag)}? stringElementValueData[$utf8ConstantArray]
+	);
 
 methodStorage[String[] utf8ConstantArray]
 	locals[int i, int methodCount]:

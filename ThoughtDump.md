@@ -4,6 +4,14 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 26.12.2016 — Antlr no cyclic references
+
+Yeah I get it. This tool is great for fast and dirty prototyping. It gives some feedback and is based on some woodoo ATN bullshit. And there is even some hack to allow sort of recursive rules to be used for parser generation.
+
+But if you think that if you have sort of recursive structure then you can use this library well tough luck! It will crash randomly with strange and weird errors at runtime. But to my pleasure this recursive stuff is not important for a moment.
+
+Yet a bit more rules to a grammar for parsing class file structures and adding last details is still not a big issue. Definitely a good library for this task.
+
 ## 23.12.2016 — See the invisible
 
 So it was not that hard to get the attribute called RuntimeInvisibleAnnotations. I just added a local annotation into java class and after compilcation it appeared. What a strange way to make this annotation unaccessible through Reflection API.
