@@ -4,6 +4,10 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 28.12.2016 — Can't stop digging
+
+It is really fascinating just to try recreate some facility to generate class files. Of course it started as a way to make some examples with invokedynamic but now it is also interesting emitter experiment! Nothing more here :) for a moment. It is already a huge commit.
+
 ## 26.12.2016 — What the hell is invokedynamic
 
 Last piece of class file parsing with bootstrap methods point to a strange invokedynamic bytecode that somehow allows some flexibility with dispatching method calls. Quick search on iternet shows that it was supposed to make implementing dynamic languages for JVM easier.

@@ -349,6 +349,7 @@ methodAttribute[String[] utf8ConstantArray]
 	}
 	(
 		{"Code".equals($attributeName)}? codeData[$utf8ConstantArray]
+		| {"Exceptions".equals($attributeName)}? exceptionsData[$utf8ConstantArray]
 		| {"Synthetic".equals($attributeName)}? syntheticData
 		| {"Signature".equals($attributeName)}? signatureData
 		| {"Deprecated".equals($attributeName)}? deprecatedData["        "]
@@ -408,6 +409,19 @@ codeAttribute[String[] utf8ConstantArray]
 		| {"LocalVariableTypeTable".equals($attributeName)}? notImplementedData
 		| {"StackMapTable".equals($attributeName)}? stackMapTableData
 	);
+
+
+exceptionsData[String[] utf8ConstantArray]
+	locals[int i, int exceptionCount]:
+	fourBytesWithLog["            Name index"]
+	twoBytesWithLog["             Exception count"]
+	{$exceptionCount = hexToInt($twoBytesWithLog.text);} 
+	(
+		{$i<$exceptionCount}? 
+			{println("               Exception index: " + $i);}
+			twoBytesWithLog["                 Value"]
+			{$i++;}
+	)*;
 
 
 lineNumberTableData:
@@ -483,7 +497,7 @@ typeInfo
 		$typeInfoTag = hexToInt($BYTE.text);
 		println("                    Type info tag: " + $typeInfoTag);
 	}
-	({$typeInfoTag == 7 || $typeInfoTag == 8}? twoBytes)*;
+	{$typeInfoTag == 7 || $typeInfoTag == 8}? twoBytesWithLog["                    Value"];
 
 
 attributeStorage[String[] utf8ConstantArray]
