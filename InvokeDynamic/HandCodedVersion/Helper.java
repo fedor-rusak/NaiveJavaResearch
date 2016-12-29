@@ -296,10 +296,10 @@ public class Helper {
 	};
 
 
- 	private static String classFile =
- 		magicStartConstant	+
- 		minorMajorJavaCompilerVersion	+
- 		getConstants(constantsData)	+
+	private static String testClassFile =
+		magicStartConstant	+
+		minorMajorJavaCompilerVersion	+
+		getConstants(constantsData)	+
 		accessFlags	+
 		thisClass	+
 		superClass	+
@@ -307,6 +307,123 @@ public class Helper {
 		fields	+
 		getMethods(methodsData, constantsData) +
 		getAttributes(attributesData, constantsData);
+
+	public static Object[][] testDataConstantsData = {
+		{METHOD_REF, 23, 46},
+		{METHOD_REF, 6, 47},
+		{METHOD_REF, 6, 48},
+		{CLASS, 49},
+		{STRING, 50},
+		{CLASS, 51},
+		{CLASS, 52},
+		{METHOD_REF, 53, 54},
+		{METHOD_REF, 32, 55},
+		{METHOD_REF, 56, 57},
+		{METHOD_REF, 53, 58},
+		{METHOD_REF, 56, 59},
+		{CLASS, 60},
+		{METHOD_REF, 13, 61},
+		{FIELD_REF, 62, 63},
+		{STRING, 64},
+		{METHOD_REF, 65, 66},
+		{METHOD_REF, 22, 67},
+		{METHOD_REF, 22, 68},
+		{METHOD_REF, 22, 69},
+		{METHOD_REF, 65, 70},
+		{CLASS, 71},
+		{CLASS, 72},
+		{UTF8, "<init>"},
+		{UTF8, "()V"},
+		{UTF8, "Code"},
+		{UTF8, "LineNumberTable"},
+		{UTF8, "adder"},
+		{UTF8, "(Ljava/lang/Integer;Ljava/lang/Integer;)Ljava/lang/Integer;"},
+		{UTF8, "funnyAdder"},
+		{UTF8, "mybsm"},
+		{CLASS, 74},
+		{UTF8, "Lookup"},
+		{UTF8, "InnerClasses"},
+		{UTF8, "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;"},
+		{UTF8, "StackMapTable"},
+		{CLASS, 75},
+		{UTF8, "Exceptions"},
+		{CLASS, 76},
+		{UTF8, "main"},
+		{UTF8, "([Ljava/lang/String;)V"},
+		{UTF8, "adderTest"},
+		{UTF8, "funnyAdderTest"},
+		{UTF8, "SourceFile"},
+		{UTF8, "TestData.java"},
+		{NAME_AND_TYPE, 24, 25},
+		{NAME_AND_TYPE, 77, 78},
+		{NAME_AND_TYPE, 79, 80},
+		{UTF8, "Test"},
+		{UTF8, "TestData.funnyAdder"},
+		{UTF8, "java/lang/Integer"},
+		{UTF8, "java/lang/Class"},
+		{CLASS, 81},
+		{NAME_AND_TYPE, 82, 83},
+		{NAME_AND_TYPE, 84, 85},
+		{CLASS, 75},
+		{NAME_AND_TYPE, 86, 87},
+		{NAME_AND_TYPE, 88, 89},
+		{NAME_AND_TYPE, 90, 91},
+		{UTF8, "java/lang/invoke/ConstantCallSite"},
+		{NAME_AND_TYPE, 24, 92},
+		{CLASS, 93},
+		{NAME_AND_TYPE, 94, 95},
+		{UTF8, "Adder tests!!!"},
+		{CLASS, 96},
+		{NAME_AND_TYPE, 97, 98},
+		{NAME_AND_TYPE, 42, 25},
+		{NAME_AND_TYPE, 43, 25},
+		{NAME_AND_TYPE, 28, 29},
+		{NAME_AND_TYPE, 97, 99},
+		{UTF8, "TestData"},
+		{UTF8, "java/lang/Object"},
+		{CLASS, 100},
+		{UTF8, "java/lang/invoke/MethodHandles$Lookup"},
+		{UTF8, "java/lang/invoke/MethodHandle"},
+		{UTF8, "java/lang/Throwable"},
+		{UTF8, "intValue"},
+		{UTF8, "()I"},
+		{UTF8, "valueOf"},
+		{UTF8, "(I)Ljava/lang/Integer;"},
+		{UTF8, "java/lang/invoke/MethodType"},
+		{UTF8, "methodType"},
+		{UTF8, "(Ljava/lang/Class;Ljava/lang/Class;[Ljava/lang/Class;)Ljava/lang/invoke/MethodType;"},
+		{UTF8, "findStatic"},
+		{UTF8, "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;"},
+		{UTF8, "type"},
+		{UTF8, "()Ljava/lang/invoke/MethodType;"},
+		{UTF8, "equals"},
+		{UTF8, "(Ljava/lang/Object;)Z"},
+		{UTF8, "asType"},
+		{UTF8, "(Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;"},
+		{UTF8, "(Ljava/lang/invoke/MethodHandle;)V"},
+		{UTF8, "java/lang/System"},
+		{UTF8, "out"},
+		{UTF8, "Ljava/io/PrintStream;"},
+		{UTF8, "java/io/PrintStream"},
+		{UTF8, "println"},
+		{UTF8, "(Ljava/lang/String;)V"},
+		{UTF8, "(Ljava/lang/Object;)V"},
+		{UTF8, "java/lang/invoke/MethodHandles"}
+	};
+
+	private static String testDataClassFile =
+		magicStartConstant	+
+		minorMajorJavaCompilerVersion	+
+		getConstants(testDataConstantsData)	+
+		accessFlags	+
+		intToShortHex(22)	+
+		intToShortHex(23)	+
+		interfaces	+
+		fields	+
+		"0007"	+
+		"0001001800190001001A0000001D00010001000000052AB70001B100000001001B000000060001000000060009001C001D0001001A00000025000200020000000D2AB600022BB6000260B80003B000000001001B000000060001000000090009001E001D0001001A00000025000200020000000D2AB600022BB6000260B80003B000000001001B0000000600010000000D0009001F00230002001A0000006900090004000000372A130004120513000613000604BD0007590313000653B80008B600094E2C2DB6000AB6000B9A00092D2CB6000C4EBB000D592DB7000EB000000002001B00000012000400000011001D001800280019002E001C0024000000080001FC002E070025002600000004000100270009002800290001001A00000033000200010000000FB2000F1210B60011B80012B80013B100000001001B0000001200040000002000080021000B0022000E00230009002A00190001001A0000002F0003000000000013B2000F1028B8000305B80003B80014B60015B100000001001B0000000A000200000026001200270009002B00190001001A0000002F0003000000000013B2000F1028B8000305B80003B80014B60015B100000001001B0000000A00020000002A0012002B" +
+		"0002"+
+		"002C00000002002D00220000000A00010020004900210019";
 
 
 	public static byte[] hexStringToByteArray(String input) {
@@ -322,8 +439,13 @@ public class Helper {
 
 
 	public static void main(String[] args) throws Exception {
-		java.io.FileOutputStream out = new java.io.FileOutputStream("Test.class");
-		out.write(hexStringToByteArray(classFile));
+		// writeClassFileToFS(testClassFile, "Test.class");
+		writeClassFileToFS(testDataClassFile, "TestData.class");
+	}
+
+	public static void writeClassFileToFS(String classFileData, String classFileName) throws Exception {
+		java.io.FileOutputStream out = new java.io.FileOutputStream(classFileName);
+		out.write(hexStringToByteArray(classFileData));
 		out.close();
 	}
 

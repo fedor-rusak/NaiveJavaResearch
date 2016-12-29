@@ -4,4 +4,4 @@ javac Helper.java
 
 java Helper
 
-java Test
+java TestData

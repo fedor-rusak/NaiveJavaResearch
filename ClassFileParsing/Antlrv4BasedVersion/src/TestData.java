@@ -17,7 +17,7 @@ public class TestData {
 		MethodHandle mh =
 			callerClass.findStatic(
 				Test.class,
-				"Test.funnyAdder",
+				"TestData.funnyAdder",
 				MethodType.methodType(Integer.class, Integer.class, Integer.class)
 			);
 

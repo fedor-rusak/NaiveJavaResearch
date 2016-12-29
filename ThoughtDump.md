@@ -4,6 +4,14 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 29.12.2016 — One step closer to use of invokedynamic
+
+So first of all I need some method that can ba called a Bootstrap. I need a way to emit it through my program. Done.
+
+Now I have to change some parts of it like one testMethod to call invokedynamic instead of invokestatic.
+
+And of course I have to add some constants and attributes to register my bootstrap method.
+
 ## 28.12.2016 — Can't stop digging
 
 It is really fascinating just to try recreate some facility to generate class files. Of course it started as a way to make some examples with invokedynamic but now it is also interesting emitter experiment! Nothing more here :) for a moment. It is already a huge commit.

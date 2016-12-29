@@ -3,7 +3,7 @@ import java.lang.invoke.*;
 import static java.lang.invoke.MethodType.*;
 import static java.lang.invoke.MethodHandles.*;
 
-public class Test {
+public class TestData {
 
 	public static Integer adder(Integer x, Integer y) {
 		return x + y;
@@ -17,7 +17,7 @@ public class Test {
 		MethodHandle mh =
 			callerClass.findStatic(
 				Test.class,
-				"Test.funnyAdder",
+				"TestData.funnyAdder",
 				MethodType.methodType(Integer.class, Integer.class, Integer.class)
 			);
 

@@ -46,6 +46,11 @@ startPoint
 	fieldStorage[$utf8ConstantArray]
 	methodStorage[$utf8ConstantArray]
 	attributeStorage[$utf8ConstantArray]
+
+	{println("Constants\n\n" + $constantPoolStorage.text + "\n\n");}
+	{println("Methods\n\n" + $methodStorage.text + "\n\n");}
+	{println("Attributes\n\n" + $attributeStorage.text + "\n\n");}
+
 	EOF;
 
 
