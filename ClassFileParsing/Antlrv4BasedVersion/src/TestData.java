@@ -10,14 +10,14 @@ public class TestData {
 	}
 
 	public static Integer funnyAdder(Integer x, Integer y) {
-		return x + y;
+		return -1*(x + y);
 	}
 
 	public static CallSite mybsm(MethodHandles.Lookup callerClass, String dynMethodName, MethodType dynMethodType) throws Throwable {
 		MethodHandle mh =
 			callerClass.findStatic(
-				Test.class,
-				"TestData.funnyAdder",
+				TestData.class,
+				"funnyAdder",
 				MethodType.methodType(Integer.class, Integer.class, Integer.class)
 			);
 
@@ -42,4 +42,4 @@ public class TestData {
 		System.out.println(adder(40,2));
 	}
 
-} 
+}

@@ -4,6 +4,16 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 30.12.2016 — Year comes to an end
+
+It was a nice year for analyzing JVM internal mechanisms.
+
+I have finished my experiment with invokedynamic and I can say it is extremely complicated and internet provides no useful examples about usage of this pretty interesting feature. It looks like brand new javascript engine for JVM called [Nashorn](http://www.oracle.com/technetwork/articles/java/jf14-nashorn-2126515.html) uses this feature a lot.
+
+This bytecode and feature was used for implementation of lambda expressions in JVM. And actually it is fine and techy.
+
+What I really dislike is a fact that there are no good ways to unload classes if you decide to create new classes in runtime. It is complicated process of managing classloaders or writing interpreters on top of interpretes and it is a real shame because with this problem solved JVM platform would be a much better experiment ground for dynamic languages.
+
 ## 29.12.2016 — One step closer to use of invokedynamic
 
 So first of all I need some method that can ba called a Bootstrap. I need a way to emit it through my program. Done.
