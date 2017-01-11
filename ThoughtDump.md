@@ -4,6 +4,16 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 11.01.2017 — Class loading is tricky
+
+Well if you try to just call Reflection API to load some class and call a method. That is fine and ok. But what if you want to make some sneaky servlet container that can dynamically load new applications? And they sure may have same files and classes? So what is java solution?
+
+I would call it a pretty powerful hack. Because JVM behavior is class-based. So this interpreter requires class loading step before any execution. Then it is logical to provide mechanism for modifying this class loading step with custom logic!
+
+In short java code is not tied to any class loader during compilation. So that code that run "inherits" class loader from class whose code is executed now. So if you load some Thread class with custom class loader then... its code will you custom loader for its execution!
+
+Sorry for such a strange description but this approach is really weird. It feels like inside of java interpreter you may start another java interpreters using these loading mechanism. And it a huge over-engineering without easy-to-suggest usage. And this will definitely add complexity to JVM implementation.
+
 ## 30.12.2016 — Year comes to an end
 
 It was a nice year for analyzing JVM internal mechanisms.
