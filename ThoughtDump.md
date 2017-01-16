@@ -4,6 +4,12 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 16.01.2017 — Object instantiation!
+
+Even after reading some bytecode I was sure that object creation means calling a special init method. But as JNI mechanism proves that reality is a bit trickier. Fact of allocating memory in heap is performed not in some initialization method but in special step called newObject in JNI case or by calling operation code 0xbb (new) from java bytecode.
+
+So the thing that is called constructor in java is just another method that describes initial value setup and optional logic steps.
+
 ## 16.01.2017 — "Switch case" is monstrous!
 
 I always thought that switch case is compiled into bunch of if cases. And I was wrong! It has its own very special bytecode implementation! First version is *tableswitch* which is used when indices can be arranged in array without too much tricks (like fake indices) and its bonus is that switch value is treated is form of index that points to code... like it is supposed to be some optimization?
