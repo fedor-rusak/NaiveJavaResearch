@@ -4,6 +4,14 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 16.01.2017 — "Switch case" is monstrous!
+
+I always thought that switch case is compiled into bunch of if cases. And I was wrong! It has its own very special bytecode implementation! First version is *tableswitch* which is used when indices can be arranged in array without too much tricks (like fake indices) and its bonus is that switch value is treated is form of index that points to code... like it is supposed to be some optimization?
+
+Second one is for situations when indices can't be arranged in array and instead we have an array of pairs like key-offset so that we go linearly and search with switch key value in it. It is like optimized group of if statements with integer comparisons.
+
+All this information is quite boring yet if we remember two things about java language: bytecode should be as close to source code as possible and no facility as macro should be used. And that is how we ended in situtation when switch case can work only with integer values and we have to wait for 7 major releases to make it work at least with strings...
+
 ## 11.01.2017 — Class loading is tricky
 
 Well if you try to just call Reflection API to load some class and call a method. That is fine and ok. But what if you want to make some sneaky servlet container that can dynamically load new applications? And they sure may have same files and classes? So what is java solution?
