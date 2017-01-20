@@ -4,6 +4,18 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 20.01.2017 — After almost a month
+
+I went from quite arrogant idea that "Java developers are ignorant about stupid JVM they use" to a slightly improved idea that "JVM understanding requires serious investment to understand". Of course I am ommiting the fact that I learned some really cool aspects of JVM implementation and ideas.
+
+About a week ago I had some doubts about purpose of my research. Because it takes time and it does not lead to some insights like "best practices for you project at work" so what is the catch?
+
+I came to a conclusion that all the knowledge you get from such research changes you whole perspective about java code. If earlier you could only think in terms of java language specification and some API conventions. Now you can think of bytecode, thread allocation, native code execution and really dig the details if you want it.
+
+New perspective fueled my interest to finally build JDK on my windows machine! And as I would provide some details about this process you could get the idea of complexity of such task.
+
+With all this specification reading and building and suffering I do really feel that I am learning something new. I missed that feeling a lot!
+
 ## 16.01.2017 — Object instantiation!
 
 Even after reading some bytecode I was sure that object creation means calling a special init method. But as JNI mechanism proves that reality is a bit trickier. Fact of allocating memory in heap is performed not in some initialization method but in special step called newObject in JNI case or by calling operation code 0xbb (new) from java bytecode.
