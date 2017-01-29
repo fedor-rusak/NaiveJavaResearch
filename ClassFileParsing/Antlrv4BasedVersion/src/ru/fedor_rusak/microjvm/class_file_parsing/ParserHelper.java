@@ -15,6 +15,12 @@ import org.antlr.v4.runtime.TokenFactory;
 import org.antlr.v4.runtime.CommonTokenFactory;
 import org.antlr.v4.runtime.misc.Pair;
 
+import org.antlr.v4.runtime.tree.xpath.XPath;
+import org.antlr.v4.runtime.RuleContext;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.ParserRuleContext;
+
 
 public class ParserHelper {
 
@@ -101,8 +107,64 @@ public class ParserHelper {
 		return parser;
 	}
 
-	public static char[] getFileDataISOEncoding(String file) throws java.io.IOException {
-		return org.antlr.v4.runtime.misc.Utils.readFile(file, "ISO-8859-1");
+	public static char[] getFileDataISOEncoding(String filePath) throws java.io.IOException {
+		return org.antlr.v4.runtime.misc.Utils.readFile(filePath, "ISO-8859-1");
+	}
+
+	public static ParseTree findElement(RuleContext tree, String query, Parser parser) {
+		return (ParseTree) XPath.findAll(tree, query, parser).toArray()[0];
+	}
+
+	public static String findElementText(RuleContext tree, String query, Parser parser) {
+		return (findElement(tree, query, parser)).getText();
+	}
+
+	public static String getClassDetailsJSONString(String filePath) throws Exception {
+		char[] fileData = getFileDataISOEncoding(filePath);
+
+		long start = System.currentTimeMillis();
+
+		ClassFileParser parser = getParser(fileData);
+		ParserRuleContext rootElementContext = parser.startPoint();
+
+		// System.out.println("Parsing time: " + (System.currentTimeMillis() - start)/1000.0 + " second(s)");
+
+		int thisClassIndex = Helper.hexToInt(findElementText(rootElementContext, "startPoint/thisClass", parser));
+		int superClassIndex = Helper.hexToInt(findElementText(rootElementContext, "startPoint/superClass", parser));
+
+		ParseTree constantPoolStorage = findElement(rootElementContext, "/startPoint/constantPoolStorage", parser);
+		int poolCount = Helper.hexToInt(constantPoolStorage.getChild(0).getText());
+
+		String constants = "";
+		String data;
+		int index = 0;
+
+		String indent = "\t";
+		String innerIndent = indent + "\t";
+
+		for (ParseTree tree : XPath.findAll(rootElementContext, "/startPoint/constantPoolStorage/constantElement", parser)) {
+			ParseTree subtree = tree.getChild(1);
+			String ruleName = ClassFileParser.ruleNames[((RuleContext) subtree).getRuleIndex()];
+
+			data = "\t\"value\": \""+subtree.getText()+"\"";
+			index += 1;
+
+			if ("utf8Data".equals(ruleName)) {
+				data = "\t\"value\": \""+Helper.hexToString(subtree.getChild(1).getText())+"\"";
+			}
+
+			if ("".equals(constants) == false) constants += ",\n";
+
+			constants += innerIndent+"{\n";
+			constants += innerIndent+"\t\"index\": "+index+",\n";
+			constants += innerIndent+"\t\"type\": \""+ruleName+"\",\n";
+			constants += innerIndent+data+"\n";
+			constants += innerIndent+"}";
+		}
+
+		constants = "[\n"+constants+"\n"+indent+"]";
+
+		return "{\n"+"\t\"thisClassIndex\": " + thisClassIndex + ",\n" + "\t\"superClassIndex\": " + superClassIndex + ",\n" + "\t\"constantPool\": " + constants + "\n}";
 	}
 
 }

@@ -4,6 +4,18 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 29.01.2017 — I have an idea
+
+I have an opportunity to work with big codebase that is build upon many libraries. From words of developers it is quite messy and is somewhat interconnected that prevents writing good tests and make agressive refactorings.
+
+My initial idea was to analyze class loading behavior and it contained staggering 100k classes! But after some analisys I have found that 55k of them were some sort of temporary (wtf?!).
+
+To the point. I thought why no to try and make some static analysis to find out the complexity of connections between modules and libraries. And of course I want to visualize it properly and make it customizable.
+
+My first step was to make a simple API on top of ANTLR to get class file constants, thisClassIndex and superClassIndex in form of JSON.
+
+Next step is working with multiple directories and zip files for analisys. And after it I need to make some html5/js based UI to see different queries on the data I have found.
+
 ## 20.01.2017 — After almost a month
 
 I went from quite arrogant idea that "Java developers are ignorant about stupid JVM they use" to a slightly improved idea that "JVM understanding requires serious investment to understand". Of course I am ommiting the fact that I learned some really cool aspects of JVM implementation and ideas.
