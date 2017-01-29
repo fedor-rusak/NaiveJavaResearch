@@ -4,6 +4,14 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 29.01.2017 — Now I have a prototype!
+
+So after some hacking I have a small proof-of-concept that can read jar files and parse classes to get their constants.
+
+But how should I save this JSON data? Like one monolith file? Or multiple files? Should I keep folder structure of original packages or mangle names like index1, index2 and save everything in one folder?
+
+Now it's time to get away from keyboard and do some real work...
+
 ## 29.01.2017 — I have an idea
 
 I have an opportunity to work with big codebase that is build upon many libraries. From words of developers it is quite messy and is somewhat interconnected that prevents writing good tests and make agressive refactorings.

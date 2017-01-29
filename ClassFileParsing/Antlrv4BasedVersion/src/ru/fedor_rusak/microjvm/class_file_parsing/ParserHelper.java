@@ -119,9 +119,13 @@ public class ParserHelper {
 		return (findElement(tree, query, parser)).getText();
 	}
 
+
 	public static String getClassDetailsJSONString(String filePath) throws Exception {
 		char[] fileData = getFileDataISOEncoding(filePath);
+		return getClassDetailsJSONString(fileData);
+	}
 
+	public static String getClassDetailsJSONString(char[] fileData) throws Exception {
 		long start = System.currentTimeMillis();
 
 		ClassFileParser parser = getParser(fileData);
