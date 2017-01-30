@@ -156,6 +156,10 @@ public class ParserHelper {
 			if ("utf8Data".equals(ruleName)) {
 				data = "\t\"value\": \""+Helper.hexToString(subtree.getChild(1).getText())+"\"";
 			}
+			else if ("classData".equals(ruleName)) {
+				data = "\t\"classIndex\": "+Helper.hexToInt(subtree.getText());
+			}
+
 
 			if ("".equals(constants) == false) constants += ",\n";
 

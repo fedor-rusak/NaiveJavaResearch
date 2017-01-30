@@ -4,6 +4,16 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 30.01.2017 — Closer to reality
+
+So now I have a solution that can search folders or zip files for class-files and after reading them it parses them for constant information.
+
+Just in case you don't know what are constants. Every java-file is encoded in bytecode, but to reduce its size all the class, method, variable names are saved in one array-like structure. This structure is called constant pool.
+
+I think that this information can be used to measure interconnectedness between java modules containing multiple packages and classes.
+
+Next thing is a prototype of some UI for visualizing this constant data. Definitely html5!
+
 ## 29.01.2017 — Now I have a prototype!
 
 So after some hacking I have a small proof-of-concept that can read jar files and parse classes to get their constants.
