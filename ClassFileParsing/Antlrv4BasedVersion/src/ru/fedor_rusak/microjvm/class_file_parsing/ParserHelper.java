@@ -154,7 +154,16 @@ public class ParserHelper {
 			index += 1;
 
 			if ("utf8Data".equals(ruleName)) {
-				data = "\t\"value\": \""+Helper.hexToString(subtree.getChild(1).getText())+"\"";
+				String value = Helper.hexToString(subtree.getChild(1).getText());
+
+				value = value.replace("\\","\\\\");
+
+				value = value.replace("\"","\\\"");
+				value = value.replace("\n","\\n");
+				value = value.replace("\r","\\r");
+				value = value.replace("\t", "\\t");
+
+				data = "\t\"value\": \""+value+"\"";
 			}
 			else if ("classData".equals(ruleName)) {
 				data = "\t\"classIndex\": "+Helper.hexToInt(subtree.getText());
@@ -168,6 +177,9 @@ public class ParserHelper {
 			constants += innerIndent+"\t\"type\": \""+ruleName+"\",\n";
 			constants += innerIndent+data+"\n";
 			constants += innerIndent+"}";
+
+			if ("doubleData".equals(ruleName) || "longData".equals(ruleName))
+				index+=1;
 		}
 
 		constants = "[\n"+constants+"\n"+indent+"]";

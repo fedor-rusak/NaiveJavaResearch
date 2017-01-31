@@ -1,5 +1,9 @@
 # Static Analysis
 
-This is a simple application that uses ANTLRv4-based parser to get JSON files with constant data about ANTLRv4 classes.
+I want to have a simple toolchain for java code analysis.
 
-It can be used to get this data from folders too. Want to try to analyze your own project? This can be a start!
+First step is getting constant pool data from compiled java classes. And result is mirrored folder structure (of jar or folder) with JSON-files.
+
+Second step is preparation for visualization. Here folder structure of each module has to be filtered from useless data and organized in final single-file format.
+
+Third step is visualization. I am not sure yet on what level I should show dependencies between modules.

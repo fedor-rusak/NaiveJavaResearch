@@ -4,6 +4,16 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 31.01.2017 — Before making visualization...
+
+I had to deal with format of data that I want to analyze and show. All these files scattered in multiple folders look like pain to deal in simple web-page.
+
+So I decided to make a nodes-script that would make me a nice simple JSON object with all the analyzed classes and their dependencies.
+
+Of course I was bit in the ass by stupid indexing in Constant Pool when double or long data is saved. And symbols like tabulation and newline also added some fun. Plus backslashes should be treated well or they broke whole parsing thing.
+
+I hope now I can get to visual part and don't think of parsing for at least some time.
+
 ## 30.01.2017 — Closer to reality
 
 So now I have a solution that can search folders or zip files for class-files and after reading them it parses them for constant information.
