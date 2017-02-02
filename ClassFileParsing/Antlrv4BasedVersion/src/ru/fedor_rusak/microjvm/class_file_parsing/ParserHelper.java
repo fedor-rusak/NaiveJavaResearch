@@ -162,6 +162,7 @@ public class ParserHelper {
 				value = value.replace("\n","\\n");
 				value = value.replace("\r","\\r");
 				value = value.replace("\t", "\\t");
+				value = value.replace("\f", "\\f");
 
 				data = "\t\"value\": \""+value+"\"";
 			}

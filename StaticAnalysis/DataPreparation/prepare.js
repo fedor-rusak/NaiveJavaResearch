@@ -1,3 +1,4 @@
+"use strict";
 var fs = require('fs');
 
 var listFiles = function(dir) {
@@ -48,11 +49,17 @@ function prepareDataObject(data) {
 
 	//console.log(indent + "superClass: " + data.superClassIndex);
 
-	var superClassConstantIndex = searchInPool(data.constantPool, data.superClassIndex).classIndex;
-	//console.log(indent + "superClassConstantIndex: " + superClassConstantIndex);
+	var superClassName;
+	if (thisClassName !== "java/lang/Object") {
+		var superClassConstantIndex = searchInPool(data.constantPool, data.superClassIndex).classIndex;
+		//console.log(indent + "superClassConstantIndex: " + superClassConstantIndex);
 
-	var superClassName = searchInPool(data.constantPool, superClassConstantIndex).value;
-	//console.log(indent + "superClass: " + superClassName);
+		superClassName = searchInPool(data.constantPool, superClassConstantIndex).value;
+		//console.log(indent + "superClass: " + superClassName);
+	}
+	else {
+		superClassName ="DOES_NOT_EXIST!!!";
+	}
 
 	var dependencies = [];
 
@@ -65,7 +72,7 @@ function prepareDataObject(data) {
 	}
 
 	return {
-		"thisClass": thisClassName,
+		"thisClassName": thisClassName,
 		"superClassName": superClassName,
 		"dependencies": dependencies
 	}
@@ -74,12 +81,12 @@ function prepareDataObject(data) {
 if (process.argv.length == 2)
 	console.log("Please specify folder with data for preparation!");
 else {
-	var filesToPrepare = listFiles(process.argv[2]);
+	var sourceDir = process.argv[2];
+	var filesToPrepare = listFiles(sourceDir);
 
 	var jsonToPrepare = [];
 
 	for (var i = 0; i < filesToPrepare.length; i++) {
-		console.log(filesToPrepare[i]);
 		jsonToPrepare.push(JSON.parse(fs.readFileSync(filesToPrepare[i])));
 	}
 
@@ -89,5 +96,6 @@ else {
 		result.push(prepareDataObject(jsonToPrepare[i]));
 	}
 
-	console.log(JSON.stringify(result));
+	fs.writeFileSync("result.json", JSON.stringify({"sourceDir": sourceDir, "data": result}, null, 4));
+	console.log("Result file saved!")
 }
