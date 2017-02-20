@@ -2,7 +2,7 @@
 var fs = require('fs');
 var execSync = require('child_process').execSync;
 
-if (process.argv.length == 3)
+if (process.argv.length != 4)
 	console.log("Please specify folder with data and resulting folder!");
 else {
 	var libFolder = process.argv[2];
