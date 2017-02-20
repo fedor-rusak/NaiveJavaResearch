@@ -4,6 +4,18 @@ Document describing my thought during different stages of JVM analysis and featu
 
 Messages are added in reversed order.
 
+## 20.02.2017 — I have something to say
+
+In truth I have finished working on my analysis toolchain about a week ago. All I saw was a mess of 400 modules which have quite a bizzare inter-relations. While it was a cool way to see that some weird commons libraries like logging may have dependencies on ... avalon-framework? Or that some libraries have to drag all the junit staff or multiple versions of ASM library just because maven see it that way.
+
+All this analysis does not provide too much worth out of the box. Well you see that there are ton of connections so now you just visualized a mess that you thought there is. And there are some shortcoming when some classes are generated or copied multiple times and you may find that libraries are linked to some random jar instead of xerces implementation.
+
+I think it can be quite good as an argument that people in java projects are adding complexity really fast and that is why they can feel out of control. And don't even start on a question about usage of Reflection API which makes any analysis useless without actually interpreting whole this code as an application.
+
+So now I have a basis for analysis of different details of java code. I can try to analyze connections between classes in one module. Maybe add information about methods used and maybe usage of synchronization or static variables. Or maybe some data about annotations.
+
+I think it is quite an achievement for a period of 3 months that I am working with inner details of java code.
+
 ## 02.02.2017 — It seems to be working
 
 So with my bunch of scripts are some manual editing I have used my scripts to parse and get data about *rt.jar* from JRE on my computer. It has about 20000 classes!
