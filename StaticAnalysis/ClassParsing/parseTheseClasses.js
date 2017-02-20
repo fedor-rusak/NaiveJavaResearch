@@ -18,5 +18,5 @@ else {
 		}
 	);
 
-	console.log("Parsed some data! " + files.length);
+	console.log("Parsed some data! Number of components: " + files.length);
 }
