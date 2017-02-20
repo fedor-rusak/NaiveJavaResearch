@@ -21,6 +21,13 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
+
 
 public class ParserHelper {
 
@@ -139,48 +146,77 @@ public class ParserHelper {
 		ParseTree constantPoolStorage = findElement(rootElementContext, "/startPoint/constantPoolStorage", parser);
 		int poolCount = Helper.hexToInt(constantPoolStorage.getChild(0).getText());
 
-		String constants = "";
-		String data;
-		int index = 0;
+
+		Map<String, String> data;
+		int constantIndex = 0;
 
 		String indent = "\t";
 		String innerIndent = indent + "\t";
+
+		List<Map<String, String>> usefulData = new ArrayList<Map<String, String>>();
+		Set<String> classIndices = new HashSet<String>();
 
 		for (ParseTree tree : XPath.findAll(rootElementContext, "/startPoint/constantPoolStorage/constantElement", parser)) {
 			ParseTree subtree = tree.getChild(1);
 			String ruleName = ClassFileParser.ruleNames[((RuleContext) subtree).getRuleIndex()];
 
-			data = "\t\"value\": \""+subtree.getText()+"\"";
-			index += 1;
+			data = new HashMap<String, String>();
+			constantIndex += 1;
+			data.put("index", ""+constantIndex);
+			data.put("type", ""+ruleName);
 
 			if ("utf8Data".equals(ruleName)) {
-				String value = Helper.hexToString(subtree.getChild(1).getText());
-
-				value = value.replace("\\","\\\\");
-
-				value = value.replace("\"","\\\"");
-				value = value.replace("\n","\\n");
-				value = value.replace("\r","\\r");
-				value = value.replace("\t", "\\t");
-				value = value.replace("\f", "\\f");
-
-				data = "\t\"value\": \""+value+"\"";
+				data.put("value", Helper.hexToString(subtree.getChild(1).getText()));
 			}
 			else if ("classData".equals(ruleName)) {
-				data = "\t\"classIndex\": "+Helper.hexToInt(subtree.getText());
+				data.put("value", ""+Helper.hexToInt(subtree.getText()));
+				classIndices.add(data.get("value"));
 			}
 
 
-			if ("".equals(constants) == false) constants += ",\n";
-
-			constants += innerIndent+"{\n";
-			constants += innerIndent+"\t\"index\": "+index+",\n";
-			constants += innerIndent+"\t\"type\": \""+ruleName+"\",\n";
-			constants += innerIndent+data+"\n";
-			constants += innerIndent+"}";
+			if ("utf8Data".equals(ruleName) || "classData".equals(ruleName)) {
+				usefulData.add(data);
+			}
 
 			if ("doubleData".equals(ruleName) || "longData".equals(ruleName))
-				index+=1;
+				constantIndex+=1;
+		}
+
+		for (int i = usefulData.size()-1; i >= 0; i--) {
+			String type = usefulData.get(i).get("type");
+			String value = usefulData.get(i).get("value");
+			String index = usefulData.get(i).get("index");
+
+			if ("utf8Data".equals(type) && classIndices.contains(index) == false) {
+				usefulData.remove(i);
+			}
+		}
+
+
+		String constants = "";
+
+		for (int i = 0; i < usefulData.size(); i++) {
+			String type = usefulData.get(i).get("type");
+			String value = usefulData.get(i).get("value");
+			String index = usefulData.get(i).get("index");
+
+			String newElement = indent + "\t" + "{\n";
+
+			newElement += indent + "\t\t" + "\"index\": " + index + ",\n";
+			newElement += indent + "\t\t" + "\"type\": \"" + type + "\",\n";
+			if ("utf8Data".equals(type)) {
+				newElement += indent + "\t\t" + "\"value\": \"" + value + "\"\n";
+			}
+			else if ("classData".equals(type)) {
+				newElement += indent + "\t\t" + "\"classIndex\": " + value + "\n";
+			}
+
+			newElement += indent + "\t" + "}";
+
+			if (i+1 != usefulData.size())
+				newElement += ",\n";
+
+			constants += newElement;
 		}
 
 		constants = "[\n"+constants+"\n"+indent+"]";

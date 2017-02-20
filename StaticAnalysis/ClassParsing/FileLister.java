@@ -21,6 +21,9 @@ public class FileLister {
 
 		String targetFolder = "result";
 
+		if (args.length > 1)
+			targetFolder = args[1];
+
 		if (file.isDirectory())
 			forDirectory(file, targetFolder);
 		else
