@@ -1,0 +1,2 @@
+../../ClassFileParsing/Antlrv4BasedVersion/Scaffolding/antlr-4.5.3-complete.jar
+../../ClassFileParsing/Antlrv4BasedVersion/tmp
