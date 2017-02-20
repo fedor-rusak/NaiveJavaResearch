@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Java module dependency analysis</title>
+
+		<script>
+			var inputData = [];
+		</script>
+		<script type="text/javascript" src="../DataPreparation/resultToUse/readyToAnalyzeData.json"></script>
+		<script>
+			"use strict";
+
+			var coreGraph = function() {
+				var generateGraphStructure = function() {
+					var naiveClone = function(element) {
+						var result = {};
+
+						for (var key in element) {
+							if (element.hasOwnProperty(key)) {
+								result[key] = element[key];
+							}
+						}
+
+						return result;
+					};
+
+					var nodeNames = [],
+					    nodeData = {},
+					    edgeNames = [],
+					    edgeData = {};
+
+					var addNode = function(name, params) {
+						if (nodeData[name] === undefined) {
+							if (params != null && typeof params === 'object') {
+								nodeData[name] = naiveClone(params);
+							}
+							else {
+								nodeData[name] = {};
+							}
+
+							nodeData[name]["name"] = name;
+							nodeNames.push(name);
+						}
+
+						return naiveClone(nodeData[name]);
+					};
+
+
+					var setNodeProperty = function(name, propertyName, propertyValue) {
+						if (nodeData[name] !== undefined) {
+							nodeData[name][propertyName] = propertyValue;
+							return naiveClone(nodeData[name]);
+						}
+					};
+
+					var getNode = function(name) {
+						return naiveClone(nodeData[name]);
+					}
+
+					var getNodeNames = function() {
+						return JSON.parse(JSON.stringify(nodeNames));
+					}
+
+					var addEdge = function(name, params) {
+						var edge = undefined;
+
+						if (params !== undefined
+							&& nodeData[params.from] !== undefined
+							&& nodeData[params.to] !== undefined) {
+
+							if (params != null && typeof params === 'object') {
+								edge = naiveClone(params);
+							}
+							else {
+								edge = {};
+							}
+
+
+							edge["name"] = name;
+
+							edgeData[name] = edge;
+
+							edgeNames.push(name);
+						}
+
+						if (edge) return naiveClone(edge);
+					}
+
+					var setEdgeProperty = function(name, propertyName, propertyValue) {
+						if (edgeData[name] !== undefined) {
+							edgeData[name][propertyName] = propertyValue;
+							return naiveClone(edgeData[name]);
+						}
+					}
+
+					var getEdge = function(name) {
+						return naiveClone(edgeData[name]);
+					}
+
+					var getEdgeNames = function() {
+						return JSON.parse(JSON.stringify(edgeNames));
+					}
+
+					var getAdjacentEdges = function(nodeName) {
+						var result = [];
+
+						if (nodeData[nodeName] !== undefined) {
+							for (var i = 0; i < edgeNames.length; i++) {
+								var edgeName = edgeNames[i];
+
+								if (edgeData[edgeName].from === nodeName
+									|| edgeData[edgeName].to === nodeName) {
+									result.push(edgeName);
+								}
+							}
+						}
+
+						return result;
+					}
+
+					return {
+						"addNode": addNode,
+						"setNodeProperty": setNodeProperty,
+						"getNode": getNode,
+						"getNodeNames": getNodeNames,
+						"addEdge": addEdge,
+						"setEdgeProperty": setEdgeProperty,
+						"getEdge": getEdge,
+						"getEdgeNames": getEdgeNames,
+						"getAdjacentEdges": getAdjacentEdges
+					};
+				};
+
+				var graphStructureFromJSON = function(input) {
+					var result = generateGraphStructure();
+
+
+					var nodeArray = input.nodes;
+
+					for (var i = 0; i < nodeArray.length; i++) {
+						var node = nodeArray[i];
+
+						result.addNode(node.name, node);
+					}
+
+
+					var edgeArray = input.edges;
+
+					for (var i = 0; i < edgeArray.length; i++) {
+						var edge = edgeArray[i];
+
+						result.addEdge(edge.name, edge);
+					}
+
+					return result;
+				}
+
+				return {
+					"generateGraphStructure": generateGraphStructure,
+					"graphStructureFromJSON": graphStructureFromJSON
+				};
+			}();
+		</script>
+		<script>
+			"use strict";
+
+			var utils = function() {
+				var generateGlobal = function(svgElement, coreGraphInstance) {
+					return {
+						forRendering: {
+							root: svgElement,
+							graph: coreGraphInstance,
+							orderedNodeNames: coreGraphInstance.getNodeNames(),
+							editorCoords: {
+								x: 0, y: 0
+							}
+						},
+						settings: {
+							clickTimeThreshold: 110
+						},
+						temp: {
+							mousePressed: false,
+							oldCoords: {x: 0, y: 0}
+						}
+					};
+				}
+
+				var setSVGAttribute = function(element, name, value) {
+					element.setAttributeNS(null, name, value);
+				}
+
+				var generateSVGElement = function(name, attributes) {
+					var result = document.createElementNS("http://www.w3.org/2000/svg", name);
+
+					if (attributes !== undefined) {
+						for (var attributeName in attributes) {
+							if (attributes.hasOwnProperty(attributeName)) {
+								setSVGAttribute(result, attributeName, attributes[attributeName]);
+							}
+						}
+					}
+
+					return result;
+				}
+
+				var getBlockWidth = function(context, text) {
+					context.font = "25px Helvetica,sans-serif";
+					return context.measureText(text).width + context.measureText(" ").width * 10;
+				}
+
+				var generateBlock = function(args, context) {
+					var result = generateSVGElement("g");
+
+					var width;
+					if (args.width !== undefined) {
+						width = args.width;
+					}
+					else if (context) {
+						context.font = "25px Helvetica,sans-serif";
+						width = getBlockWidth(context, args.text);
+					}
+					else {
+						width = 130;
+					}
+					var height = args.height || 130;
+
+					var x = args.x-width/2, y = args.y-height/2;
+					if (args.position === "left") {
+						x = args.x;
+					}
+
+					var background = generateSVGElement(
+						"rect",
+						{
+							fill: args.color || "#ccc",
+							x: x,
+							y: y,
+							width: width,
+							height: height,
+							rx: 20,
+							ry: 20
+						}
+					);
+					result.appendChild(background);
+
+					var textStyle = "font: 25px Helvetica,sans-serif; text-anchor: middle; user-select: none; -webkit-user-select: none; -moz-user-select: none; cursor: default;";
+					if (args["text-color"] !== undefined) {
+						textStyle += " fill: " + args["text-color"] + ";";
+					}
+
+					if (args.link !== undefined) {
+						textStyle += "cursor: pointer;";
+					}
+
+					var label = generateSVGElement(
+						"text",
+						{
+							style: textStyle,
+							fill: "#222",
+							x: x+width/2,
+							y: y+height/2+10
+						}
+					);
+					if (args.link !== undefined) {
+						setSVGAttribute(label, "class", "link");
+					}
+					result.appendChild(label);
+
+					var labelText = document.createTextNode(args.text);
+					label.appendChild(labelText);
+
+			 		return result;
+				}
+
+				var generatePathFromCode = function(pathCode, color) {
+					return generateSVGElement(
+						"path",
+						{
+							d: pathCode,
+							fill: "transparent",
+							stroke: color || "#AAA",
+							style: "stroke-width: 3"
+						}
+					);
+				}
+
+				var makeSomething = function(x1, y1, x2, y2) {
+					var xM = x2, yM = y2;
+					var lineLength = Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+
+					var someValue = 200;
+
+					if (lineLength < 200) {
+						//do nothing and use default values
+					}
+					else if ((x2 - x1) === 0) {
+						var sign = 1;
+
+						if (y2 < y1) sign = -1;
+
+						xM = x2+sign*someValue;
+						yM = (y2+y1)/2;
+					}
+					else if ((y2 - y1) === 0) {
+						var sign = 1;
+
+						if (x2 > x1) sign = -1;
+
+						xM = (x2+x1)/2;
+						yM = y2+sign*someValue;
+					}
+					else {
+						var m = (y2-y1)/(x2-x1);
+
+						var tempX = (x2+x1)/2, tempY = (y2+y1)/2;
+
+						var perpendicularM = -1/m;
+						var perpendicularB = tempY - perpendicularM*tempX;
+
+						var sign = 1;
+
+						if (y2 < y1) sign = -1;
+
+						xM = tempX + sign * Math.cos(Math.atan(perpendicularM))*someValue;
+
+						tempY = perpendicularM * (xM) + perpendicularB;
+
+						yM = tempY;
+					}
+
+					var result = "M"+x1+" "+y1;
+						result += " Q"+xM+" "+yM+" "+x2+" "+y2;
+					return result;
+				}
+
+				var generateSneakyPath = function(x1, y1, x2, y2, color) {
+					var pathCode = makeSomething(x1,y1,x2,y2);
+
+					return generatePathFromCode(pathCode, color);
+				}
+
+				var moveElement = function(node, x, y) {
+					var paramString = ' translate(' + x + ',' + y + ')';
+					node.setAttribute('transform', paramString);
+				}
+
+				var render = function(rootElement, graph, orderedNodeNames, editorCoords, highlightedModule) {
+					if (rootElement.hasChildNodes()) {
+						rootElement.removeChild(rootElement.childNodes[0]);
+					}
+
+					var rootGroup = generateSVGElement("g");
+					rootElement.appendChild(rootGroup);
+
+					rootGroup.setAttributeNS(null, "transform", "translate("+editorCoords.x+","+editorCoords.y+")");
+
+					var edgeNames = graph.getEdgeNames();
+
+					var context = document.createElement("canvas").getContext("2d");
+
+
+					for (var i = 0; i < edgeNames.length; i++) {
+						var edge = graph.getEdge(edgeNames[i]);
+
+						var from = graph.getNode(edge.from);
+						var to = graph.getNode(edge.to);
+
+						var x1 = from.x, y1 = from.y, x2 = to.x, y2 = to.y;
+
+						if (from.position === "left") {
+							x1 += getBlockWidth(context, from.name)/2;
+						}
+
+						if (to.position === "left") {
+							x2 += getBlockWidth(context, to.name)/2;
+						}
+
+						var edgeColor = undefined;
+						var relatedToHighlightedModule = (to.name === highlightedModule || from.name === highlightedModule);
+						if (highlightedModule && relatedToHighlightedModule) {
+							edgeColor = "#1A1";
+
+							if (from.name === highlightedModule)
+								edgeColor = "#11A";
+						}
+
+						var domEdge = generateSneakyPath(x1, y1, x2, y2, edgeColor);
+						domEdge.setAttributeNS(null, "name", edge.name);
+						domEdge.setAttributeNS(null, "from", from.name);
+						domEdge.setAttributeNS(null, "to", to.name);
+
+						if (highlightedModule && relatedToHighlightedModule === false) {
+							rootGroup.prependChild(domeEdge);
+						}
+						else
+							rootGroup.appendChild(domEdge);
+					}
+
+
+					for (var i = 0; i < orderedNodeNames.length; i++) {
+						var node = graph.getNode(orderedNodeNames[i]);
+
+						node["text"] = (node.prefix || "") + node.name;
+						if (node["text-color"] === undefined && node.link !== undefined) {
+							node["text-color"] = "#8e44ad";
+						}
+						var domNode = generateBlock(node, context);
+						domNode.setAttributeNS(null, "name", node.name);
+
+						rootGroup.appendChild(domNode);
+					}
+				}
+
+				var renderFromJSON = function(forRendering, onlyEditorCoordsChanged, shouldFixOrder, shouldFixEdges, nodeName, highlightedModule) {
+					var rootElement = forRendering.root,
+						graph = forRendering.graph,
+						orderedNodeNames = forRendering.orderedNodeNames,
+						editorCoords = forRendering.editorCoords;
+
+					if (onlyEditorCoordsChanged) {
+						rootElement.childNodes[0].setAttributeNS(null, "transform", "translate("+editorCoords.x+","+editorCoords.y+")");
+					}
+					else if (shouldFixEdges === true && nodeName !== undefined) {
+						var context = document.createElement("canvas").getContext("2d");
+
+						var childNode = undefined;
+
+
+						for (var i = 0; i < rootElement.childNodes[0].childNodes.length; i++) {
+							var tempChildNode = rootElement.childNodes[0].childNodes[i];
+							if (tempChildNode.getAttributeNS(null, "name") === nodeName) {
+								childNode = tempChildNode;
+								break;
+							}
+						}
+
+						
+						if (shouldFixOrder === true) {
+							rootElement.childNodes[0].removeChild(childNode);
+							rootElement.childNodes[0].appendChild(childNode);
+						}
+
+						
+						var node = graph.getNode(nodeName);
+						node["text"] = (node.prefix || "") + node.name;
+
+						var domNode = generateBlock(node, context);
+
+						childNode.childNodes[0].setAttributeNS(null, "x", domNode.childNodes[0].getAttributeNS(null, "x"));
+						childNode.childNodes[0].setAttributeNS(null, "y", domNode.childNodes[0].getAttributeNS(null, "y"));
+						childNode.childNodes[1].setAttributeNS(null, "x", domNode.childNodes[1].getAttributeNS(null, "x"));
+						childNode.childNodes[1].setAttributeNS(null, "y", domNode.childNodes[1].getAttributeNS(null, "y"));
+
+
+						//fixing edges
+						var edgeOrder = [];
+						for (var i = 0; i < rootElement.childNodes[0].childNodes.length; i++) {
+							var tempChildNode = rootElement.childNodes[0].childNodes[i];
+							var fromName = tempChildNode.getAttributeNS(null, "from");
+							var toName = tempChildNode.getAttributeNS(null, "to");
+							
+							if (fromName === null || toName === null) {
+								//not an edge
+								break;
+							}
+
+							var from = graph.getNode(fromName);
+							var to = graph.getNode(toName);
+
+							var x1 = from.x, y1 = from.y, x2 = to.x, y2 = to.y;
+
+							if (from.position === "left") {
+								x1 += getBlockWidth(context, from.name)/2;
+							}
+
+							if (to.position === "left") {
+								x2 += getBlockWidth(context, to.name)/2;
+							}
+
+							var edgeColor = undefined;
+							if (highlightedModule) {
+								if (to.name === highlightedModule || from.name === highlightedModule) {
+									edgeColor = "#1A1";
+
+									if (from.name === highlightedModule)
+										edgeColor = "#11A";
+								}
+								else {
+									edgeColor = "#F5F5F5";
+								}
+							}
+
+							var domEdge = generateSneakyPath(x1, y1, x2, y2, edgeColor);
+							tempChildNode.setAttributeNS(null, "d", domEdge.getAttributeNS(null, "d"));
+							tempChildNode.setAttributeNS(null, "stroke", domEdge.getAttributeNS(null, "stroke"));
+
+							if (highlightedModule) {
+								if (to.name === highlightedModule || from.name === highlightedModule)
+									edgeOrder.push(tempChildNode);
+								else
+									edgeOrder.unshift(tempChildNode);
+							}
+						}
+
+						if (highlightedModule) {
+							for (var i = edgeOrder.length-1; i >= 0; i--) {
+								rootElement.childNodes[0].removeChild(edgeOrder[i]);
+								rootElement.childNodes[0].prepend(edgeOrder[i]);
+							}
+						}
+					}
+					else {
+						if (highlightedModule)
+							render(rootElement, graph, orderedNodeNames, editorCoords, highlightedModule);
+						else 
+							render(rootElement, graph, orderedNodeNames, editorCoords);
+					}
+				}
+				var onMouseDownListener = function(global, e) {
+					var element = e.target;
+					var nodeName = element.nodeName;
+
+
+					global.temp.startTime = Date.now();
+					global.temp.oldCoords.x = e.clientX;
+					global.temp.oldCoords.y = e.clientY;
+					global.temp.mousePressed = true;
+
+
+					var forRendering = global.forRendering;
+
+					if ("text" === nodeName || "rect" === nodeName) {
+						var graphNodeName = element.parentNode.getAttributeNS(null, "name");
+						var graphNode = forRendering.graph.getNode(graphNodeName);
+
+						if (graphNode != null) {
+							global.temp.chosenElement = {
+								"type": "graphNode",
+								"svgNodeName": nodeName,
+								"name": graphNodeName
+							}
+						}
+					}
+					else if ("path" === nodeName) {
+						var graphEdgeName = element.getAttributeNS(null, "name");
+						var graphEdge = forRendering.graph.getEdge(graphEdgeName);
+
+						if (graphEdge != null) {
+							global.temp.chosenElement = {
+								"type": "graphEdge",
+								"name": graphEdgeName
+							}
+						}
+					}
+					else if ("svg" === nodeName) {
+						global.temp.chosenElement = {"type": "wholeSVG"};
+					}
+				};
+
+				var fixOrder = function(orderedArray, valueToLift) {
+					var result = [];
+
+					for (var i = 0; i < orderedArray.length; i++) {
+						if (orderedArray[i] === valueToLift) {
+							for (var j = i; j < orderedArray.length-1; j++) {
+								result.push(orderedArray[j+1]);
+							}
+
+							result.push(valueToLift);
+
+							break;
+						}
+						else {
+							result.push(orderedArray[i]);
+						}
+					}
+
+					return result;
+				};
+
+				var onMouseMoveListener = function(global, e) {
+					if (global.temp.mousePressed != true) return;
+
+					if ((Date.now() - global.temp.startTime) < global.settings.clickTimeThreshold) return;
+
+					var currentCoords = {
+						x: e.clientX,
+						y: e.clientY
+					};
+
+					var forRendering = global.forRendering;
+
+					if (global.temp.chosenElement.type === "graphNode") {
+						var graphNodeName = global.temp.chosenElement.name;
+						var graphNode = forRendering.graph.getNode(graphNodeName);
+
+						if (graphNode) {
+							var orderedNodeNames = forRendering.orderedNodeNames;
+							if (global.temp.chosenElement.orderAlreadyFixed === undefined) {
+								forRendering.orderedNodeNames = fixOrder(forRendering.orderedNodeNames, graphNodeName);
+
+								global.temp.chosenElement.orderAlreadyFixed = true;
+							}
+
+
+							var oldCoords = global.temp.oldCoords;
+
+							var newX = graphNode.x + currentCoords.x - oldCoords.x;
+							var newY = graphNode.y + currentCoords.y - oldCoords.y;
+
+							forRendering.graph.setNodeProperty(graphNodeName, "x", newX);
+							forRendering.graph.setNodeProperty(graphNodeName, "y", newY);
+
+							global.temp.rerender = true;
+						};
+					}
+					else if (global.temp.chosenElement.type === "wholeSVG") {
+						var oldCoords = global.temp.oldCoords;
+
+						var newXDelta = currentCoords.x - oldCoords.x;
+						var newYDelta = currentCoords.y - oldCoords.y;
+
+						global.forRendering.editorCoords.x += newXDelta;
+						global.forRendering.editorCoords.y += newYDelta;
+
+						global.temp.rerender = true;
+					}
+
+					if (global.temp.rerender) {
+						var onlyEditorCoordsChanged = global.temp.chosenElement.type === "wholeSVG";
+
+						if (onlyEditorCoordsChanged === false) {
+							var shouldFixOrder = global.temp.shouldFixOrder === false ? false : true;
+							if (shouldFixOrder === true) {
+								global.temp.shouldFixOrder = false;
+							}
+							var shouldFixEdges = true;
+							var nodeName = global.temp.chosenElement.name;
+							renderFromJSON(forRendering, onlyEditorCoordsChanged, shouldFixOrder, shouldFixEdges, nodeName, global.temp.highlightedModule);
+						}
+						else {
+							renderFromJSON(forRendering, onlyEditorCoordsChanged);
+						}
+
+						global.temp.rerender = undefined;
+					}
+
+					global.temp.oldCoords.x = currentCoords.x;
+					global.temp.oldCoords.y = currentCoords.y;
+				};
+
+				var onMouseUpListener = function(global, e) {
+					if ((Date.now() - global.temp.startTime) > global.settings.clickTimeThreshold) {
+						global.temp.mousePressed = false;
+						global.temp.chosenElement = null;
+						global.temp.shouldFixOrder = null;
+						return;
+					}
+
+					var element = e.target;
+					var nodeName = element.nodeName;
+
+					var forRendering = global.forRendering;
+
+					if (global.temp.chosenElement.type === "graphNode") {
+						var graphNodeName = global.temp.chosenElement.name;
+						var graphNode = forRendering.graph.getNode(graphNodeName);
+
+						if (graphNode && graphNode.link && global.temp.chosenElement.svgNodeName == "text")
+							window.location = graphNode.link;
+						else if (graphNode) {
+							forRendering.orderedNodeNames = fixOrder(forRendering.orderedNodeNames, graphNodeName);
+
+							if (global.temp.highlightedModule === undefined) {
+								global.temp.highlightedModule = graphNodeName;
+								renderFromJSON(forRendering, false, true, true, graphNodeName, graphNodeName);
+							}
+							else if (global.temp.highlightedModule !== graphNodeName) {
+								global.temp.highlightedModule = graphNodeName;
+								renderFromJSON(forRendering, false, true, true, graphNodeName, graphNodeName);
+							}
+							else if (global.temp.highlightedModule === graphNodeName) {
+								global.temp.highlightedModule = undefined;
+								renderFromJSON(forRendering, false, true, true, graphNodeName);
+							}
+							
+						}
+					}
+					else if (global.temp.chosenElement.type === "graphEdge") {
+						var graphEdgeName = global.temp.chosenElement.name;
+						var graphEdge = forRendering.graph.getEdge(graphEdgeName);
+
+						// if (graphEdge) alert(graphEdge.name);
+					}
+					else if (global.temp.chosenElement.type === "wholeSVG") {
+						alert("Root element clicked!");
+					}
+					else {
+						alert("WTF you clicked?");
+					}
+
+					global.temp.mousePressed = false;
+					global.temp.chosenElement = null;
+					global.temp.shouldFixOrder = null;
+				};
+
+				return {
+					"generateGlobal": generateGlobal,
+					"renderFromJSON": renderFromJSON,
+					"onMouseDownListener": onMouseDownListener,
+					"onMouseMoveListener": onMouseMoveListener,
+					"onMouseUpListener": onMouseUpListener
+				}
+			}();
+		</script>
+
+		<script>
+			"use strict";
+
+			window.onload = function () {
+				var data = {
+					"nodes": [],
+					"edges": []
+				};
+
+				var appNames = {}; //place module name as key and value as true to make change colof of this element 
+
+				var toExclude = {}; //place module name as key and comment about it as value to filter it out
+
+				var excludeNameParts = []; //place part of string, modules names with such substring will be filtered
+
+				function isOk(valueToCheck, stopValues) {
+					var result = true;
+
+					for (var i = 0; i < stopValues.length; i++)
+						if (valueToCheck.indexOf(stopValues[i]) !== -1) {
+							result = false;
+							break;
+						}
+
+					return result;
+				}
+
+				var MAX_HEIGHT = 12;
+				var counter = 0;
+				for (var i = 0; i < inputData.length; i++) {
+					var dataElement = inputData[i];
+
+					var newNode = {
+						"name": dataElement.moduleName,
+						"x": 250 + 480*(Math.floor(counter/MAX_HEIGHT)),
+						"y": 125 + 120*(counter % MAX_HEIGHT),
+						"height": 80,
+						"color": appNames[dataElement.moduleName] ? "#e67e22" : "#2980b9",
+						"legend": dataElement.moduleName
+					};
+
+					if (toExclude[dataElement.moduleName] === undefined
+						&& isOk(dataElement.moduleName, excludeNameParts)) {
+						data.nodes.push(newNode);
+						counter++;
+					}
+
+				}
+
+				for (var i = 0; i < inputData.length; i++) {
+					var dataElement = inputData[i];
+
+					for (var j = 0; j < dataElement.required.length; j++) {
+						if (dataElement.required[j] !== dataElement.moduleName) {
+							var newEdge = {
+								"name": dataElement.moduleName + "2" + dataElement.required[j],
+								"from": dataElement.moduleName,
+								"to": dataElement.required[j]
+							};
+
+							if (toExclude[dataElement.required[j]] === undefined
+								&& isOk(dataElement.required[j], excludeNameParts))
+								data.edges.push(newEdge)
+						}
+					}
+				}
+
+				var coreGraphInstance = coreGraph.graphStructureFromJSON(data);
+						
+				var svgElement = document.querySelector("#svg");
+
+				var global = utils.generateGlobal(svgElement, coreGraphInstance);
+
+				utils.renderFromJSON(global.forRendering);
+
+				svgElement.onmousedown = utils.onMouseDownListener.bind(null, global);
+
+				svgElement.onmousemove = utils.onMouseMoveListener.bind(null, global);
+
+				svgElement.onmouseup = utils.onMouseUpListener.bind(null, global);
+			};
+		</script>
+	</head>
+	<body style="width:100%;  margin: 0;">
+		<svg xmlns="http://www.w3.org/2000/svg" id="svg" style="position:fixed; top:0; left:0; height:100%; width:100% ; user-select: none; -webkit-user-select: none; -moz-user-select: none;"></svg>
+	</body>
+</html>
