@@ -49,9 +49,15 @@ else {
 
 	var buildFile = buildFile.replace(new RegExp("\r", "g"), "");
 	var lines = buildFile.split("\n");
+	var counter = 0;
 
 	for(var i = 0; i < lines.length; i++) {
 		var line = lines[i];
+
+		if (fs.existsSync(line) === false) {
+			console.log("WARNING: " + line + " does not exist!");
+			break;
+		}
 
 		if (line.endsWith(".jar")) {
 			var jarName = line.split("/")[line.split("/").length-1];
@@ -67,7 +73,9 @@ else {
 
 			copyFolderRecursiveSync(classFolderNamePath, "lib/");
 		}
+
+		counter++;
 	}
 
-	console.log("Downloaded all " + lines.length + " components!");
+	console.log("Downloaded all " + counter + " component(s)!");
 }
