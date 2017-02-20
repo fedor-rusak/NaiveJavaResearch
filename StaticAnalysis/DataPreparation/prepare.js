@@ -78,10 +78,11 @@ function prepareDataObject(data) {
 	}
 }
 
-if (process.argv.length == 2)
-	console.log("Please specify folder with data for preparation!");
+if (process.argv.length != 4)
+	console.log("Please specify folder with data for preparation and result file name!");
 else {
 	var sourceDir = process.argv[2];
+	var resultFileName = process.argv[3];
 	var filesToPrepare = listFiles(sourceDir);
 
 	var jsonToPrepare = [];
@@ -96,6 +97,6 @@ else {
 		result.push(prepareDataObject(jsonToPrepare[i]));
 	}
 
-	fs.writeFileSync("result.json", JSON.stringify({"sourceDir": sourceDir, "data": result}, null, 4));
+	fs.writeFileSync(resultFileName, JSON.stringify({"sourceDir": sourceDir, "data": result}, null, 4));
 	console.log("Result file saved!")
 }

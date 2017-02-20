@@ -1,10 +1,11 @@
 "use strict";
 var fs = require('fs');
 
-if (process.argv.length == 2)
-	console.log("Please specify folder with data for preparation!");
+if (process.argv.length != 4)
+	console.log("Please specify folder with data for preparation and resulting file name!");
 else {
 	var moduleFileData = JSON.parse(fs.readFileSync(process.argv[2]));
+	var resultFileName = process.argv[3];
 
 	console.log(moduleFileData.data.length);
 
@@ -43,6 +44,6 @@ else {
 		},
 		null, 4);
 
-	fs.writeFileSync("compressedResult.json", resultString);
+	fs.writeFileSync(resultFileName, resultString);
 	console.log("Result file saved!")
 }

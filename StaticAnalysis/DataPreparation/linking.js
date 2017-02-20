@@ -35,7 +35,7 @@ function link(targetModule, linkModule) {
 				result.required.push(linkModule.moduleName);
 			}
 
-			result.linked[classToLink] = result.required.length-1;
+			result.linked[classToLink] = linkModule.moduleName;
 		}
 		else {
 			result.unlinked.push(classToLink);
@@ -45,26 +45,34 @@ function link(targetModule, linkModule) {
 	return result;
 }
 
-if (process.argv.length == 2)
-	console.log("Please specify folder with data for preparation!");
+if (process.argv.length != 4)
+	console.log("Please specify folder with data for linkage and resulting folder!");
 else {
+	var sourceFolder = process.argv[2];
+	var resultFolder = process.argv[3];
+
+	var files = fs.readdirSync(sourceFolder);
+
 	var dataFiles = [];
-	for (var i = 2; i < process.argv.length; i++) {
-		dataFiles.push(JSON.parse(fs.readFileSync(process.argv[i])));
-	}
+	files.forEach(
+		function (file) {
+			dataFiles.push(JSON.parse(fs.readFileSync(sourceFolder+"/"+file)));
+		}
+	);
 
 	var dataArray = [];
 
 	for (var i = 0; i < dataFiles.length; i++) {
+		var moduleName = dataFiles[i].sourceDir.split("/").pop();
 		var data = {
-			"moduleName": dataFiles[i].sourceDir,
+			"moduleName": moduleName,
 			"linked": {},
 			"required": [],
 			"unlinked": dataFiles[i].dependencies,
 			"provided": dataFiles[i].provided
 		};
 
-		dataArray.push(data);
+		dataArray.push(link(data,data));
 	}
 
 	var result = [];
@@ -72,19 +80,29 @@ else {
 
 	for (var i = 0; i < dataArray.length; i++) {
 		var temp = dataArray[i];
+		console.log((i+1) + " from " + dataArray.length + " = " + temp.moduleName);
 
 		for (var j = 0; j < dataArray.length; j++) {
 			temp = link(temp, dataArray[j]);
 		}
-		// temp.linked = undefined;
-		// temp.unlinked = undefined;
-		// temp.provided = undefined;
+
 		result.push(temp);
 
-		miniResult.push({"moduleName": temp.moduleName, "unlinked": temp.unlinked, "required": temp.required});
+		var specialMap = {};
+		for (var key in temp.linked) {
+			if (temp.linked.hasOwnProperty(key)) {
+				var requiredModuleName = temp.linked[key];
+
+				if (specialMap[requiredModuleName] === undefined) specialMap[requiredModuleName] = 0;
+
+				specialMap[requiredModuleName] += 1;
+			}
+		}
+
+		miniResult.push({"moduleName": temp.moduleName, "unlinked": temp.unlinked, "required": temp.required, "moduleUsage": specialMap});
 	}
 
-	fs.writeFileSync("finalResult.json", JSON.stringify(result, null, 4));
-	fs.writeFileSync("finalMiniResult.json", JSON.stringify(miniResult, null, 4));
-	console.log("Result file saved!")
+	fs.writeFileSync(resultFolder+"/"+"fullData.json", JSON.stringify(result, null, 4));
+	fs.writeFileSync(resultFolder+"/"+"miniData.json", JSON.stringify(miniResult, null, 4));
+	console.log("Result files saved!")
 }
